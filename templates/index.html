@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de Ejercicios Matemáticos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #1a1a2e;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        select,
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        select:focus,
+        input[type="number"]:focus {
+            border-color: #0f3460;
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #0f3460;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .tipos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .tipo-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .tipo-item:hover {
+            border-color: #0f3460;
+            background: #f0f4ff;
+        }
+
+        .tipo-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #0f3460;
+            cursor: pointer;
+        }
+
+        .tipo-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+            font-size: 13px;
+        }
+
+        #preview {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: none;
+            border: 2px solid #e0e0e0;
+        }
+
+        #preview h3 {
+            margin-bottom: 20px;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ejercicio-preview {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            border-left: 5px solid #0f3460;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .ejercicio-preview .tipo {
+            color: #6c757d;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .ejercicio-preview .enunciado {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f0f4ff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ejercicio-preview .enunciado img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .ejercicio-preview .solucion {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f0fff4;
+            border-radius: 8px;
+            border-left: 3px solid #28a745;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ejercicio-preview .solucion img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .ejercicio-preview .solucion-oculta {
+            color: #6c757d;
+            font-style: italic;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #0f3460;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .badge-success {
+            background: #28a745;
+        }
+
+        @media (max-width: 700px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .tipos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📐 Generador de Ejercicios</h1>
+        <p class="subtitle">Crea hojas de ejercicios combinando múltiples tipos</p>
+
+        <form id="form-ejercicios">
+            <!-- Selección de tipos (múltiple) -->
+            <div class="form-group">
+                <label>📚 Tipos de ejercicios:</label>
+                <div class="tipos-grid">
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_integrales" value="integrales" checked>
+                        <label for="tipo_integrales">Integrales</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_derivadas" value="derivadas" checked>
+                        <label for="tipo_derivadas">Derivadas</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_limites" value="limites" checked>
+                        <label for="tipo_limites">Límites</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_fracciones" value="fracciones">
+                        <label for="tipo_fracciones">Fracciones</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_funciones" value="funciones">
+                        <label for="tipo_funciones">Funciones</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_extremos" value="extremos">
+                        <label for="tipo_extremos">Extremos</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_asintotas" value="asintotas">
+                        <label for="tipo_asintotas">Asíntotas</label>
+                    </div>
+                    <div class="tipo-item">
+                        <input type="checkbox" id="tipo_analisis" value="analisis">
+                        <label for="tipo_analisis">Análisis</label>
+                    </div>
+                </div>
+                <div class="info-text">💡 Selecciona uno o más tipos para combinarlos en la misma ficha</div>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="dificultad">🎯 Dificultad:</label>
+                    <select id="dificultad" name="dificultad">
+                        <option value="facil">Fácil</option>
+                        <option value="media" selected>Media</option>
+                        <option value="dificil">Difícil</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cantidad">🔢 Ejercicios por tipo:</label>
+                    <input type="number" id="cantidad" name="cantidad" min="1" max="999" value="3">
+                    <div class="info-text">Ej: 3 → 3 ejercicios de cada tipo seleccionado</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="mostrar_soluciones" checked>
+                    <label for="mostrar_soluciones">✅ Mostrar soluciones en el PDF</label>
+                    <span class="badge">RECOMENDADO</span>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" class="btn btn-secondary" id="btn-preview">
+                    👁️ Previsualizar
+                </button>
+                <button type="submit" class="btn btn-primary" id="btn-generar">
+                    📄 Generar PDF
+                </button>
+            </div>
+        </form>
+
+        <div id="preview">
+            <h3>
+                👁️ Previsualización de ejercicios:
+                <span style="font-size: 14px; font-weight: normal; color: #666;" id="preview-info"></span>
+            </h3>
+            <div id="preview-content">
+                <div class="loading">⏳ Generando previsualización...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('btn-preview').addEventListener('click', async function () {
+            const previewDiv = document.getElementById('preview');
+            const contentDiv = document.getElementById('preview-content');
+            const infoSpan = document.getElementById('preview-info');
+
+            // Obtener tipos seleccionados
+            const tipos = [];
+            document.querySelectorAll('.tipo-item input[type="checkbox"]:checked').forEach(cb => {
+                tipos.push(cb.value);
+            });
+
+            if (tipos.length === 0) {
+                alert('⚠️ Selecciona al menos un tipo de ejercicio');
+                return;
+            }
+
+            previewDiv.style.display = 'block';
+            contentDiv.innerHTML = '<div class="loading">⏳ Generando previsualización...</div>';
+
+            const data = {
+                tipos: tipos,
+                dificultad: document.getElementById('dificultad').value,
+                cantidad_por_tipo: parseInt(document.getElementById('cantidad').value) || 2,
+                mostrar_soluciones: document.getElementById('mostrar_soluciones').checked
+            };
+
+            const total = data.cantidad_por_tipo * tipos.length;
+            infoSpan.textContent = `(${total} ejercicios totales, ${data.cantidad_por_tipo} de cada tipo)`;
+
+            try {
+                const response = await fetch('/api/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al generar preview');
+                }
+
+                const ejercicios = await response.json();
+                contentDiv.innerHTML = ejercicios.map((ej, i) => `
+                    <div class="ejercicio-preview">
+                        <div class="tipo">📌 ${ej.tipo || 'Ejercicio'} #${i + 1}</div>
+                        <div class="enunciado">${ej.enunciado_html || ej.enunciado}</div>
+                        <div class="solucion">
+                            ${ej.solucion_html ? ej.solucion_html : (data.mostrar_soluciones ? '🔍 Sin solución' : '🔒 Solución oculta')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                contentDiv.innerHTML = `<div class="loading" style="color: red;">❌ Error: ${error.message}</div>`;
+                console.error('Error:', error);
+            }
+        });
+
+        document.getElementById('form-ejercicios').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('btn-generar');
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Generando...';
+            btn.disabled = true;
+
+            // Obtener tipos seleccionados
+            const tipos = [];
+            document.querySelectorAll('.tipo-item input[type="checkbox"]:checked').forEach(cb => {
+                tipos.push(cb.value);
+            });
+
+            if (tipos.length === 0) {
+                alert('⚠️ Selecciona al menos un tipo de ejercicio');
+                btn.textContent = originalText;
+                btn.disabled = false;
+                return;
+            }
+
+            const data = {
+                tipos: tipos,
+                dificultad: document.getElementById('dificultad').value,
+                cantidad_por_tipo: parseInt(document.getElementById('cantidad').value) || 2,
+                mostrar_soluciones: document.getElementById('mostrar_soluciones').checked
+            };
+
+            try {
+                const response = await fetch('/api/generar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al generar PDF');
+                }
+
+                // Descargar el PDF
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const tiposStr = tipos.join('_');
+                a.download = `ejercicios_${tiposStr}_${data.dificultad}_${data.mostrar_soluciones ? 'con_soluciones' : 'sin_soluciones'}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('❌ Error al generar el PDF: ' + error.message);
+                console.error('Error:', error);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>
