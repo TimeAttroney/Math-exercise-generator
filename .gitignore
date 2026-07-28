@@ -34,3 +34,6 @@ server.log
 *.png
 *.jpg
 *.jpeg
+
+#Basura de versiones
+drafts/

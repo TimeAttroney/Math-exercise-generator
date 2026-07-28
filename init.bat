@@ -1,12 +1,6 @@
 @echo off
-title Generador de Ejercicios
-
 start /B python app.py
-
 timeout /t 3 /nobreak >nul
-
-start http://localhost:5000
-
-pause >nul
-
-taskkill /F /IM python.exe 2>nul
+start http://127.0.0.1:5000
+pause
+taskkill /F /IM python.exe >nul 2>&1

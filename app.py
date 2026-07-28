@@ -19,9 +19,9 @@ app.config['DEBUG'] = True
 # Inicializar el generador
 try:
     generador = GeneradorEjercicios()
-    print("✅ Generador inicializado correctamente")
+    print("✅ Generator initialized successfully")
 except Exception as e:
-    print(f"❌ Error al inicializar generador: {e}")
+    print(f"❌ Error initializing generator: {e}")
     sys.exit(1)
 
 # Registrar fuentes para PDF
@@ -72,8 +72,8 @@ def imagen_base64_a_reportlab(imagen_base64, ancho=400, alto=60):
         return None
 
 
-def crear_pdf_ejercicios(tipos, dificultad, cantidad_por_tipo, mostrar_soluciones=True):
-    """Genera un PDF con ejercicios combinados"""
+def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
+    """Generate a PDF with exercises from the selected subtypes"""
     try:
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4,
@@ -91,17 +91,6 @@ def crear_pdf_ejercicios(tipos, dificultad, cantidad_por_tipo, mostrar_solucione
             spaceAfter=20,
             textColor=colors.darkblue,
             leading=24
-        )
-
-        subtitulo_style = ParagraphStyle(
-            'Subtitulo',
-            parent=styles['Normal'],
-            fontName='TimesNewRoman',
-            fontSize=14,
-            alignment=TA_CENTER,
-            spaceAfter=15,
-            textColor=colors.darkgreen,
-            leading=18
         )
 
         normal_style = ParagraphStyle(
@@ -147,45 +136,43 @@ def crear_pdf_ejercicios(tipos, dificultad, cantidad_por_tipo, mostrar_solucione
             spaceAfter=8
         )
 
-        # Generar ejercicios combinados
-        print(f"📝 Generando ejercicios combinados")
-        print(f"   - Tipos: {tipos}")
-        print(f"   - Dificultad: {dificultad}")
-        print(f"   - Por tipo: {cantidad_por_tipo}")
+        enunciado_texto_style = ParagraphStyle(
+            'EnunciadoTexto',
+            parent=styles['Normal'],
+            fontName='TimesNewRoman',
+            fontSize=12,
+            alignment=TA_LEFT,
+            spaceAfter=5,
+            leading=16,
+            textColor=colors.black
+        )
 
-        ejercicios = generador.generar_ejercicios(
-            tipos, dificultad, cantidad_por_tipo)
-        print(f"✅ {len(ejercicios)} ejercicios generados")
+        # Generate exercises
+        print(
+            f"📝 Generating exercises for {len(tipos_seleccionados)} subtypes")
+        ejercicios = generador.generar_ejercicios_por_subtipos(
+            tipos_seleccionados)
+        print(f"✅ {len(ejercicios)} exercises generated")
 
         flowables = []
 
         # Título
-        tipos_nombres = {
-            'integrales': 'Integrales',
-            'derivadas': 'Derivadas',
-            'limites': 'Límites',
-            'fracciones': 'Fracciones Algebraicas',
-            'funciones': 'Funciones',
-            'extremos': 'Extremos (Máximos y Mínimos)',
-            'asintotas': 'Asíntotas',
-            'analisis': 'Análisis de Funciones'
-        }
-        tipos_str = ', '.join([tipos_nombres.get(t, t) for t in tipos])
-
+        flowables.append(Paragraph(f"Exercise Sheet", titulo_style))
         flowables.append(
-            Paragraph(f"Hoja de Ejercicios Combinados", titulo_style))
-        flowables.append(Paragraph(f"Tipos: {tipos_str}", subtitulo_style))
-        flowables.append(Paragraph(
-            f"Nivel: {dificultad.capitalize()}  |  {cantidad_por_tipo} ejercicios por tipo", normal_style))
+            Paragraph(f"Total: {len(ejercicios)} exercises", normal_style))
         flowables.append(Spacer(1, 20))
         flowables.append(Paragraph("_"*80, normal_style))
         flowables.append(Spacer(1, 15))
 
-        # Añadir ejercicios
+        # Add exercises
         for i, ejercicio in enumerate(ejercicios, 1):
             try:
                 flowables.append(
-                    Paragraph(f"<b>Ejercicio {i}.</b>", ejercicio_style))
+                    Paragraph(f"<b>Exercise {i}.</b>", ejercicio_style))
+
+                if 'enunciado_texto' in ejercicio and ejercicio['enunciado_texto']:
+                    flowables.append(
+                        Paragraph(f"<i>{ejercicio['enunciado_texto']}</i>", enunciado_texto_style))
 
                 if 'enunciado_img' in ejercicio and ejercicio['enunciado_img']:
                     enunciado_img = imagen_base64_a_reportlab(
@@ -201,11 +188,11 @@ def crear_pdf_ejercicios(tipos, dificultad, cantidad_por_tipo, mostrar_solucione
 
                 if 'tipo' in ejercicio and ejercicio['tipo']:
                     flowables.append(
-                        Paragraph(f"<i>{ejercicio['tipo']}</i>", tipo_style))
+                        Paragraph(f"<i>Type: {ejercicio['tipo']}</i>", tipo_style))
 
                 if mostrar_soluciones:
                     flowables.append(
-                        Paragraph("<b>Solución:</b>", solucion_style))
+                        Paragraph("<b>Solution:</b>", solucion_style))
                     if 'solucion_img' in ejercicio and ejercicio['solucion_img']:
                         solucion_img = imagen_base64_a_reportlab(
                             ejercicio['solucion_img'], ancho=320, alto=55)
@@ -220,7 +207,7 @@ def crear_pdf_ejercicios(tipos, dificultad, cantidad_por_tipo, mostrar_solucione
                 else:
                     flowables.append(Spacer(1, 5))
                     flowables.append(
-                        Paragraph("<i>Espacio para resolución:</i>", normal_style))
+                        Paragraph("<i>Space for solving:</i>", normal_style))
                     flowables.append(Spacer(1, 30))
                     flowables.append(Paragraph("."*60, normal_style))
 
@@ -234,20 +221,20 @@ def crear_pdf_ejercicios(tipos, dificultad, cantidad_por_tipo, mostrar_solucione
                     flowables.append(PageBreak())
 
             except Exception as e:
-                print(f"❌ Error en ejercicio {i}: {e}")
+                print(f"❌ Error in exercise {i}: {e}")
                 flowables.append(
-                    Paragraph(f"<b>Error en ejercicio {i}</b>", normal_style))
+                    Paragraph(f"<b>Error in exercise {i}</b>", normal_style))
                 flowables.append(Paragraph(str(e), normal_style))
                 flowables.append(Spacer(1, 20))
 
-        print("📄 Construyendo PDF...")
+        print("📄 Building PDF...")
         doc.build(flowables)
         buffer.seek(0)
-        print("✅ PDF generado correctamente")
+        print("✅ PDF generated successfully")
         return buffer
 
     except Exception as e:
-        print(f"❌ Error grave al generar PDF: {e}")
+        print(f"❌ Serious error while generating PDF: {e}")
         traceback.print_exc()
         raise
 
@@ -264,37 +251,27 @@ def generar_pdf():
         if not data:
             return jsonify({'error': 'No se recibieron datos'}), 400
 
-        tipos = data.get('tipos', ['integrales'])
-        dificultad = data.get('dificultad', 'media')
-        cantidad_por_tipo = int(data.get('cantidad_por_tipo', 2))
+        tipos = data.get('tipos', [])
         mostrar_soluciones = data.get('mostrar_soluciones', True)
 
-        # Validar tipos
-        tipos_validos = ['integrales', 'derivadas', 'limites',
-                         'fracciones', 'funciones', 'extremos', 'asintotas', 'analisis']
-        for t in tipos:
-            if t not in tipos_validos:
-                return jsonify({'error': f'Tipo no válido: {t}'}), 400
+        if not tipos:
+            return jsonify({'error': 'No se seleccionaron subtipos'}), 400
 
-        print(f"\n🚀 Solicitud recibida:")
-        print(f"   - Tipos: {tipos}")
-        print(f"   - Dificultad: {dificultad}")
-        print(f"   - Cantidad por tipo: {cantidad_por_tipo}")
-        print(f"   - Mostrar soluciones: {mostrar_soluciones}")
+        print(f"\n🚀 PDF request received:")
+        print(f"   - Subtypes: {len(tipos)}")
+        print(f"   - Show solutions: {mostrar_soluciones}")
 
-        pdf_buffer = crear_pdf_ejercicios(
-            tipos, dificultad, cantidad_por_tipo, mostrar_soluciones)
+        pdf_buffer = crear_pdf_ejercicios(tipos, mostrar_soluciones)
 
-        tipos_str = '_'.join(tipos)
         return send_file(
             pdf_buffer,
             as_attachment=True,
-            download_name=f'ejercicios_combinados_{tipos_str}_{dificultad}.pdf',
+            download_name=f'MEG_{len(tipos)}exercises.pdf',
             mimetype='application/pdf'
         )
 
     except Exception as e:
-        print(f"❌ Error en /api/generar: {e}")
+        print(f"❌ Error in /api/generate: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
@@ -306,49 +283,52 @@ def previsualizar():
         if not data:
             return jsonify({'error': 'No se recibieron datos'}), 400
 
-        tipos = data.get('tipos', ['integrales'])
-        dificultad = data.get('dificultad', 'media')
-        # Máximo 3 para preview
-        cantidad_por_tipo = min(int(data.get('cantidad_por_tipo', 2)), 3)
+        tipos = data.get('tipos', [])
         mostrar_soluciones = data.get('mostrar_soluciones', True)
 
-        print(f"\n👁️ Preview solicitado:")
-        print(f"   - Tipos: {tipos}")
-        print(f"   - Dificultad: {dificultad}")
-        print(f"   - Cantidad por tipo: {cantidad_por_tipo}")
+        if not tipos:
+            return jsonify({'error': 'No se seleccionaron subtipos'}), 400
 
-        ejercicios = generador.generar_ejercicios(
-            tipos, dificultad, cantidad_por_tipo)
+        print(f"\n👁️ Preview requested:")
+        print(f"   - Subtypes: {len(tipos)}")
+
+        ejercicios = generador.generar_ejercicios_por_subtipos(tipos)
 
         for ej in ejercicios:
             try:
+                enunciado_html = ""
+                if 'enunciado_texto' in ej and ej['enunciado_texto']:
+                    enunciado_html += f"<div style='font-weight: bold; color: #1a1a2e; margin-bottom: 8px;'>{ej['enunciado_texto']}</div>"
+
                 if 'enunciado_img' in ej and ej['enunciado_img']:
-                    ej['enunciado_html'] = f'<img src="data:image/png;base64,{ej["enunciado_img"]}" style="max-width: 100%;">'
+                    enunciado_html += f'<img src="data:image/png;base64,{ej["enunciado_img"]}" style="max-width: 100%;">'
                 else:
-                    ej['enunciado_html'] = f'<b>Enunciado:</b> {ej.get("enunciado", "")}'
+                    enunciado_html += f'<div>{ej.get("enunciado", "")}</div>'
+
+                ej['enunciado_html'] = enunciado_html
 
                 if mostrar_soluciones:
                     if 'solucion_img' in ej and ej['solucion_img']:
                         ej['solucion_html'] = f'<img src="data:image/png;base64,{ej["solucion_img"]}" style="max-width: 100%;">'
                     else:
-                        ej['solucion_html'] = f'<b>Solución:</b> {ej.get("solucion", "")}'
+                        ej['solucion_html'] = f'<b>Solution:</b> {ej.get("solucion", "")}'
                 else:
-                    ej['solucion_html'] = '<i>🔒 Solución oculta (para practicar)</i>'
+                    ej['solucion_html'] = '<i style="color:#94a3b8;">🔒 Solution hidden (for practice)</i>'
 
             except Exception as e:
-                print(f"❌ Error al procesar imagen: {e}")
-                ej['enunciado_html'] = f'<b>Error al renderizar:</b> {ej.get("enunciado", "")}'
-                ej['solucion_html'] = f'<b>Error al renderizar:</b> {ej.get("solucion", "")}'
+                print(f"❌ Error processing image: {e}")
+                ej['enunciado_html'] = f'<b>Error rendering:</b> {ej.get("enunciado", "")}'
+                ej['solucion_html'] = f'<b>Error rendering:</b> {ej.get("solucion", "")}'
 
         return jsonify(ejercicios)
 
     except Exception as e:
-        print(f"❌ Error en /api/preview: {e}")
+        print(f"❌ Error in /api/preview: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
 if __name__ == '__main__':
-    print("🚀 Iniciando servidor Flask...")
-    print("📌 Accede a http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print("🚀 Starting Flask server...")
+    print("📌 Open: http://127.0.0.1:5000")
+    app.run(debug=True, host='127.0.0.1', port=5000)
