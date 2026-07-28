@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+server.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos generados
+*.pdf
+*.png
+*.jpg
+*.jpeg
