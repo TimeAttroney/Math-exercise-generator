@@ -11,7 +11,7 @@ import base64
 import os
 import sys
 import traceback
-from generador_meg_fixed import ExerciseGenerator
+from generator import ExerciseGenerator
 
 app = Flask(__name__, template_folder=os.path.dirname(__file__))
 app.config['DEBUG'] = True
