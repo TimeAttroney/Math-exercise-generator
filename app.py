@@ -11,7 +11,7 @@ import base64
 import os
 import sys
 import traceback
-from generador import GeneradorEjercicios
+from generator import GeneradorEjercicios
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
