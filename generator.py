@@ -1,11 +1,18 @@
-from sympy import Rational, symbols, sin, cos, tan, exp, log, sqrt
+from sympy import Rational, symbols, sin, cos, tan, exp, log, sqrt, oo
 import sympy as sp
 import matplotlib.pyplot as plt
 import base64
 import io
-
+import random
 import matplotlib
 matplotlib.use('Agg')
+
+# ===== FONT CONFIGURATION =====
+# Use Times New Roman / STIX font for math rendering
+matplotlib.rcParams['mathtext.fontset'] = 'stix'  # STIX is Times-like
+matplotlib.rcParams['font.family'] = 'serif'
+matplotlib.rcParams['font.serif'] = [
+    'Times New Roman', 'DejaVu Serif', 'Computer Modern Roman']
 
 
 class ExerciseGenerator:
@@ -108,6 +115,7 @@ class ExerciseGenerator:
             'anal_racional': 'Analysis: rational',
             'anal_trigonometrico': 'Analysis: trigonometric',
         }
+        print('✅ Generator initialized with 48 exercise subtypes')
 
     def render_expression(self, latex_expression, size=16):
         if not latex_expression:
@@ -126,17 +134,53 @@ class ExerciseGenerator:
 
     def generate_exercises_by_subtypes(self, selected_types):
         exercises = []
+        used_exercises = set()  # ← NEW: Track to prevent duplicates
+
         for item in selected_types:
             subtype_id = item['id']
             quantity = item.get('quantity', 1)
             if subtype_id not in self.subtypes_map:
+                print(f'⚠️ Unrecognized subtype: {subtype_id}')
                 continue
             generator_func = self.subtypes_map[subtype_id]
             name = self.subtypes_names.get(subtype_id, subtype_id)
+            print(f'   - Generating {quantity} of {name}')
+
             for _ in range(quantity):
-                exercise = generator_func('medium')
-                exercise['type'] = name
-                exercises.append(exercise)
+                attempts = 0
+                max_attempts = 20  # Prevent infinite loop
+                exercise = None
+
+                while attempts < max_attempts:
+                    try:
+                        exercise = generator_func('medium')
+                        exercise['type'] = name
+
+                        # Create a unique key for this exercise
+                        exercise_key = str(exercise.get(
+                            'statement', '')) + str(exercise.get('statement_text', ''))
+
+                        # If this exercise hasn't been used before, keep it
+                        if exercise_key not in used_exercises:
+                            used_exercises.add(exercise_key)
+                            exercises.append(exercise)
+                            break
+
+                        attempts += 1
+                        print(
+                            f'      ⚠️ Duplicate detected, regenerating... ({attempts}/{max_attempts})')
+
+                    except Exception as exc:
+                        print(f'      ❌ Error: {exc}')
+                        exercises.append(self._exercise_error(name))
+                        break
+
+                if attempts >= max_attempts:
+                    print(
+                        f'      ⚠️ Could not generate unique exercise after {max_attempts} attempts')
+                    exercises.append(self._exercise_error(name))
+
+        print(f'✅ {len(exercises)} exercises generated')
         return exercises
 
     def _exercise_error(self, name):
@@ -185,8 +229,12 @@ class ExerciseGenerator:
             'solution_img': self.render_expression(solution_latex),
         }
 
+    # ===== INTEGRALS =====
     def _integral_polynomial(self, difficulty):
-        expr = 3 * self.x**4 + 2 * self.x**2 - 5 * self.x
+        # Generate random polynomial: coefficient * x^n
+        n = random.randint(2, 6)
+        coeff = random.randint(1, 5)
+        expr = coeff * self.x**n + random.randint(-3, 3) * self.x**(n-1)
         return self._make_integral(expr, 'Calculate the following immediate integral')
 
     def _integral_logarithm(self, difficulty):
@@ -198,7 +246,9 @@ class ExerciseGenerator:
         return self._make_integral(expr, 'Calculate the following exponential integral')
 
     def _integral_trigonometric(self, difficulty):
-        expr = sin(self.x)
+        funcs = [sin, cos]
+        func = random.choice(funcs)
+        expr = func(self.x)
         return self._make_integral(expr, 'Calculate the following trigonometric integral')
 
     def _integral_inverse_trig(self, difficulty):
@@ -206,43 +256,56 @@ class ExerciseGenerator:
         return self._make_integral(expr, 'Calculate the following inverse trigonometric integral')
 
     def _integral_almost_power(self, difficulty):
-        expr = (2 * self.x + 1) ** 2
+        a = random.randint(1, 3)
+        n = random.randint(2, 4)
+        expr = (a * self.x + 1) ** n
         return self._make_integral(expr, 'Calculate the following almost immediate integral')
 
     def _integral_almost_log(self, difficulty):
-        expr = 1 / (2 * self.x + 1)
+        a = random.randint(1, 3)
+        expr = 1 / (a * self.x + 1)
         return self._make_integral(expr, 'Calculate the following almost immediate logarithmic integral')
 
     def _integral_almost_exp(self, difficulty):
-        expr = exp(2 * self.x + 1)
+        a = random.randint(1, 3)
+        b = random.randint(0, 3)
+        expr = exp(a * self.x + b)
         return self._make_integral(expr, 'Calculate the following almost immediate exponential integral')
 
     def _integral_almost_trig(self, difficulty):
-        expr = sin(2 * self.x + 1)
+        a = random.randint(1, 3)
+        b = random.randint(0, 3)
+        expr = sin(a * self.x + b)
         return self._make_integral(expr, 'Calculate the following almost immediate trigonometric integral')
 
     def _integral_almost_invtrig(self, difficulty):
-        expr = 1 / (1 + (2 * self.x) ** 2)
+        a = random.randint(1, 3)
+        expr = 1 / (1 + (a * self.x) ** 2)
         return self._make_integral(expr, 'Calculate the following almost immediate inverse trigonometric integral')
 
     def _integral_almost_logacot(self, difficulty):
-        expr = (2 * self.x) / (1 + self.x**2)
+        a = random.randint(1, 3)
+        expr = (a * self.x) / (1 + self.x**2)
         return self._make_integral(expr, 'Calculate the following almost immediate integral with logarithm and arctangent')
 
     def _integral_rational_simple(self, difficulty):
-        expr = 1 / (self.x**2 - 1)
+        a = random.randint(2, 4)
+        expr = 1 / (self.x**2 - a**2)
         return self._make_integral(expr, 'Calculate the following rational integral with simple roots')
 
     def _integral_rational_multiple(self, difficulty):
-        expr = 1 / (self.x**3 - self.x)
+        a = random.randint(2, 3)
+        expr = 1 / (self.x**3 - a**2 * self.x)
         return self._make_integral(expr, 'Calculate the following rational integral with multiple roots')
 
     def _integral_rational_degree2(self, difficulty):
-        expr = 1 / (self.x**2 + 2 * self.x + 2)
+        a = random.randint(1, 3)
+        expr = 1 / (self.x**2 + 2 * a * self.x + 2 * a**2)
         return self._make_integral(expr, 'Calculate the following rational integral with a quadratic factor')
 
     def _integral_trig_special(self, difficulty):
-        expr = sin(self.x) ** 2
+        func = random.choice([sin, cos])
+        expr = func(self.x) ** 2
         return self._make_integral(expr, 'Calculate the following special trigonometric integral')
 
     def _integral_by_parts(self, difficulty):
@@ -254,39 +317,52 @@ class ExerciseGenerator:
         return self._make_integral(expr, 'Calculate the following integral through a trigonometric substitution')
 
     def _integral_change_irrational(self, difficulty):
-        expr = sqrt(self.x)
+        expr = sqrt(self.x + 1)
         return self._make_integral(expr, 'Calculate the following integral with an irrational function')
 
+    # ===== DERIVATIVES =====
     def _derivative_polynomial(self, difficulty):
-        expr = 3 * self.x**4 + 2 * self.x**2 - 5 * self.x
+        n = random.randint(2, 5)
+        coeff = random.randint(1, 5)
+        expr = coeff * self.x**n + random.randint(-3, 3) * self.x**(n-1)
         return self._make_derivative(expr, 'Find the derivative of the following polynomial')
 
     def _derivative_trigonometric(self, difficulty):
-        expr = sin(self.x) * cos(self.x)
+        funcs = [sin, cos, tan]
+        func = random.choice(funcs)
+        expr = func(self.x)
         return self._make_derivative(expr, 'Find the derivative of the following trigonometric function')
 
     def _derivative_exponential(self, difficulty):
-        expr = exp(2 * self.x)
+        a = random.randint(1, 3)
+        expr = exp(a * self.x)
         return self._make_derivative(expr, 'Find the derivative of the following exponential function')
 
     def _derivative_logarithmic(self, difficulty):
-        expr = log(self.x**2 + 1)
+        a = random.randint(1, 3)
+        expr = log(a * self.x**2 + 1)
         return self._make_derivative(expr, 'Find the derivative of the following logarithmic function')
 
     def _derivative_chain_rule(self, difficulty):
-        expr = (self.x**2 + 1) ** 3
+        a = random.randint(1, 3)
+        n = random.randint(2, 4)
+        expr = (a * self.x**2 + 1) ** n
         return self._make_derivative(expr, 'Find the derivative using the chain rule')
 
     def _derivative_implicit(self, difficulty):
-        expr = self.x**2 + self.y**2 - 1
+        a = random.randint(2, 5)
+        expr = self.x**2 + self.y**2 - a**2
         return self._make_derivative(expr, 'Find the implicit derivative of the following relation')
 
+    # ===== LIMITS =====
     def _limit_infinity(self, difficulty):
-        expr = (2 * self.x + 1) / (self.x + 1)
+        a = random.randint(1, 3)
+        expr = (a * self.x + 1) / (self.x + 1)
         return self._make_limit(expr, 'Find the limit as x tends to infinity')
 
     def _limit_indeterminate(self, difficulty):
-        expr = (self.x**2 - 1) / (self.x - 1)
+        a = random.randint(2, 4)
+        expr = (self.x**2 - a**2) / (self.x - a)
         return self._make_limit(expr, 'Find the limit of the indeterminate form')
 
     def _limit_trigonometric(self, difficulty):
@@ -297,164 +373,244 @@ class ExerciseGenerator:
         expr = (1 + 1 / self.x) ** self.x
         return self._make_limit(expr, "Find the special limit involving Euler's number")
 
+    # ===== FRACTIONS =====
     def _fraction_simplify(self, difficulty):
+        # Generate random fractions with different values
+        numerator = random.randint(4, 12)
+        denominator = random.randint(2, 12)
+        while denominator % 2 == 0 or denominator % 3 == 0:
+            denominator = random.randint(2, 12)
+        # Ensure fraction is not already simplified
+        if numerator % denominator == 0:
+            numerator = denominator * random.randint(2, 4)
+        simplified = sp.simplify(sp.Rational(numerator, denominator))
+        statement_latex = sp.latex(sp.Rational(numerator, denominator))
+        solution_latex = sp.latex(simplified)
         return {
-            'statement': r'\frac{6}{8}',
-            'solution': r'\frac{3}{4}',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Simplify the following fraction',
-            'statement_img': self.render_expression(r'\frac{6}{8}'),
-            'solution_img': self.render_expression(r'\frac{3}{4}'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _fraction_add(self, difficulty):
+        # Random fractions with different denominators
+        a = random.randint(1, 5)
+        b = random.randint(2, 6)
+        c = random.randint(1, 5)
+        d = random.randint(2, 6)
+        while d == b:
+            d = random.randint(2, 6)
+        statement_latex = sp.latex(sp.Rational(
+            a, b)) + ' + ' + sp.latex(sp.Rational(c, d))
+        solution_latex = sp.latex(sp.Rational(a, b) + sp.Rational(c, d))
         return {
-            'statement': r'\frac{1}{3} + \frac{1}{6}',
-            'solution': sp.latex(Rational(1, 3) + Rational(1, 6)),
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Add the following fractions',
-            'statement_img': self.render_expression(r'\frac{1}{3} + \frac{1}{6}'),
-            'solution_img': self.render_expression(sp.latex(Rational(1, 3) + Rational(1, 6))),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _fraction_multiply(self, difficulty):
+        a = random.randint(1, 5)
+        b = random.randint(2, 6)
+        c = random.randint(1, 5)
+        d = random.randint(2, 6)
+        statement_latex = sp.latex(sp.Rational(
+            a, b)) + ' \\cdot ' + sp.latex(sp.Rational(c, d))
+        solution_latex = sp.latex(sp.Rational(a, b) * sp.Rational(c, d))
         return {
-            'statement': r'\frac{2}{5} \cdot \frac{3}{4}',
-            'solution': sp.latex(Rational(2, 5) * Rational(3, 4)),
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Multiply the following fractions',
-            'statement_img': self.render_expression(r'\frac{2}{5} \cdot \frac{3}{4}'),
-            'solution_img': self.render_expression(sp.latex(Rational(2, 5) * Rational(3, 4))),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _fraction_divide(self, difficulty):
+        a = random.randint(1, 5)
+        b = random.randint(2, 6)
+        c = random.randint(1, 5)
+        d = random.randint(2, 6)
+        statement_latex = sp.latex(sp.Rational(
+            a, b)) + ' \\div ' + sp.latex(sp.Rational(c, d))
+        solution_latex = sp.latex(sp.Rational(a, b) / sp.Rational(c, d))
         return {
-            'statement': r'\frac{3}{4} \div \frac{1}{2}',
-            'solution': sp.latex(Rational(3, 4) / Rational(1, 2)),
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Divide the following fractions',
-            'statement_img': self.render_expression(r'\frac{3}{4} \div \frac{1}{2}'),
-            'solution_img': self.render_expression(sp.latex(Rational(3, 4) / Rational(1, 2))),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
+    # ===== FUNCTIONS =====
     def _function_domain(self, difficulty):
+        a = random.randint(1, 4)
+        statement_latex = r'\sqrt{x-' + str(a) + r'}'
+        solution_latex = f'x \\ge {a}'
         return {
-            'statement': r'\sqrt{x-1}',
-            'solution': 'x \\ge 1',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the domain of the following function',
-            'statement_img': self.render_expression(r'\sqrt{x-1}'),
-            'solution_img': self.render_expression('x \\ge 1'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _function_range(self, difficulty):
+        a = random.randint(1, 3)
+        statement_latex = f'f(x)={a}x^2'
+        solution_latex = 'y \\ge 0'
         return {
-            'statement': r'f(x)=x^2',
-            'solution': 'y \\ge 0',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the range of the following function',
-            'statement_img': self.render_expression(r'f(x)=x^2'),
+            'statement_img': self.render_expression(statement_latex),
             'solution_img': self.render_expression('y \\ge 0'),
         }
 
     def _function_zeros(self, difficulty):
+        a = random.randint(2, 5)
+        statement_latex = f'x^2-{a**2}'
+        solution_latex = f'x = \\pm {a}'
         return {
-            'statement': r'x^2-4',
-            'solution': 'x = -2, 2',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the zeros of the following function',
-            'statement_img': self.render_expression(r'x^2-4'),
-            'solution_img': self.render_expression('x = -2, 2'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _function_growth(self, difficulty):
+        n = random.choice([2, 3, 5])
+        statement_latex = f'f(x)=x^{n}'
+        solution_latex = f'Increasing on \\mathbb{{R}}' if n % 2 == 1 else f'Decreases on (-\\infty, 0), increases on (0, \\infty)'
         return {
-            'statement': r'f(x)=x^3',
-            'solution': 'Increasing on \\mathbb{R}',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Determine the growth of the following function',
-            'statement_img': self.render_expression(r'f(x)=x^3'),
-            'solution_img': self.render_expression('Increasing on \\mathbb{R}'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
+    # ===== EXTREMA =====
     def _extreme_polynomial(self, difficulty):
+        a = random.randint(2, 5)
+        statement_latex = f'f(x)=x^2-{a}x+1'
+        solution_latex = f'Minimum at x = {a/2:.1f}'
         return {
-            'statement': r'f(x)=x^2-4x+1',
-            'solution': 'Minimum at x = 2',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the extrema of the following polynomial function',
-            'statement_img': self.render_expression(r'f(x)=x^2-4x+1'),
-            'solution_img': self.render_expression('Minimum at x = 2'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _extreme_trigonometric(self, difficulty):
+        statement_latex = r'f(x)=\sin(x)'
+        solution_latex = r'Maximum at x = \frac{\pi}{2}'
         return {
-            'statement': r'f(x)=\sin(x)',
-            'solution': 'Maximum at x = \\frac{\\pi}{2}',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the extrema of the following trigonometric function',
-            'statement_img': self.render_expression(r'f(x)=\sin(x)'),
-            'solution_img': self.render_expression('Maximum at x = \\frac{\\pi}{2}'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _extreme_rational(self, difficulty):
+        a = random.randint(1, 3)
+        statement_latex = f'f(x)=\\frac{{{a}x}}{{x^2+1}}'
+        solution_latex = f'Maximum at x = 1' if a > 0 else f'Minimum at x = -1'
         return {
-            'statement': r'f(x)=\frac{x}{x^2+1}',
-            'solution': 'Maximum at x = 1',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the extrema of the following rational function',
-            'statement_img': self.render_expression(r'f(x)=\frac{x}{x^2+1}'),
-            'solution_img': self.render_expression('Maximum at x = 1'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
+    # ===== ASYMPTOTES =====
     def _asymptote_vertical(self, difficulty):
+        a = random.randint(2, 5)
+        statement_latex = f'f(x)=\\frac{{1}}{{x-{a}}}'
+        solution_latex = f'Vertical asymptote at x = {a}'
         return {
-            'statement': r'f(x)=\frac{1}{x-2}',
-            'solution': 'Vertical asymptote at x = 2',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the vertical asymptote of the following function',
-            'statement_img': self.render_expression(r'f(x)=\frac{1}{x-2}'),
-            'solution_img': self.render_expression('Vertical asymptote at x = 2'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _asymptote_horizontal(self, difficulty):
+        a = random.randint(2, 4)
+        statement_latex = f'f(x)=\\frac{{{a}x+1}}{{x+1}}'
+        solution_latex = f'Horizontal asymptote y = {a}'
         return {
-            'statement': r'f(x)=\frac{2x+1}{x+1}',
-            'solution': 'Horizontal asymptote y = 2',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the horizontal asymptote of the following function',
-            'statement_img': self.render_expression(r'f(x)=\frac{2x+1}{x+1}'),
-            'solution_img': self.render_expression('Horizontal asymptote y = 2'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _asymptote_oblique(self, difficulty):
+        a = random.randint(1, 3)
+        statement_latex = f'f(x)=\\frac{{x^2+{a}}}{{x}}'
+        solution_latex = 'Oblique asymptote y = x'
         return {
-            'statement': r'f(x)=\frac{x^2+1}{x}',
-            'solution': 'Oblique asymptote y = x',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the oblique asymptote of the following function',
-            'statement_img': self.render_expression(r'f(x)=\frac{x^2+1}{x}'),
-            'solution_img': self.render_expression('Oblique asymptote y = x'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _asymptote_mixed(self, difficulty):
+        a = random.randint(2, 4)
+        statement_latex = f'f(x)=\\frac{{x^2+1}}{{x-{a}}}'
+        solution_latex = f'Vertical asymptote x = {a} and oblique asymptote y = x + {a}'
         return {
-            'statement': r'f(x)=\frac{x^2+1}{x-1}',
-            'solution': 'Vertical asymptote x = 1 and oblique asymptote y = x + 1',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Find the asymptotes of the following function',
-            'statement_img': self.render_expression(r'f(x)=\frac{x^2+1}{x-1}'),
-            'solution_img': self.render_expression('Vertical asymptote x = 1 and oblique asymptote y = x + 1'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
+    # ===== ANALYSIS =====
     def _analysis_polynomial(self, difficulty):
+        a = random.randint(2, 4)
+        statement_latex = f'f(x)=x^2-{a**2}'
+        solution_latex = f'Domain: \\mathbb{{R}}, zeros at x = \\pm {a}, minimum at x = 0'
         return {
-            'statement': r'f(x)=x^2-4',
-            'solution': 'Domain: \\mathbb{R}, zeros at x = \\pm 2, minimum at x = 0',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Analyze the following polynomial function',
-            'statement_img': self.render_expression(r'f(x)=x^2-4'),
-            'solution_img': self.render_expression('Domain: \\mathbb{R}, zeros at x = \\pm 2, minimum at x = 0'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _analysis_rational(self, difficulty):
+        a = random.randint(2, 4)
+        statement_latex = f'f(x)=\\frac{{1}}{{x-{a}}}'
+        solution_latex = f'Domain: x \\ne {a}, vertical asymptote x = {a}'
         return {
-            'statement': r'f(x)=\frac{1}{x-1}',
-            'solution': 'Domain: x \ne 1, vertical asymptote x = 1',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Analyze the following rational function',
-            'statement_img': self.render_expression(r'f(x)=\frac{1}{x-1}'),
-            'solution_img': self.render_expression('Domain: x \ne 1, vertical asymptote x = 1'),
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
     def _analysis_trigonometric(self, difficulty):
+        statement_latex = r'f(x)=\sin(x)'
+        solution_latex = 'Domain: \\mathbb{R}, range: [-1,1]'
         return {
-            'statement': r'f(x)=\sin(x)',
-            'solution': 'Domain: \\mathbb{R}, range: [-1,1]',
+            'statement': statement_latex,
+            'solution': solution_latex,
             'statement_text': 'Analyze the following trigonometric function',
-            'statement_img': self.render_expression(r'f(x)=\sin(x)'),
+            'statement_img': self.render_expression(statement_latex),
             'solution_img': self.render_expression('Domain: \\mathbb{R}, range: [-1,1]'),
         }

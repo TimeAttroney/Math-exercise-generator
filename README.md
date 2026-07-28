@@ -30,8 +30,8 @@ The application allows you to:
 ## Project structure
 
 - app.py: Flask server, app routes, and PDF generation.
-- generador.py: math exercise generation logic.
-- templates/index.html: web interface for the generator.
+- generator.py: math exercise generation logic.
+- index.html: web interface for the generator.
 - requirements.txt: project dependencies.
 - init.bat: startup script for Windows.
 
@@ -39,6 +39,7 @@ The application allows you to:
 
 - Python 3.8 or higher
 - Dependencies listed in requirements.txt
+- MiKTeX (Windows) or TeX Live (Linux/macOS) – required for rendering math formulas with Times New Roman font.
 
 ## Installation
 
