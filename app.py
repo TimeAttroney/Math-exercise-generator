@@ -236,7 +236,7 @@ def create_exercise_pdf(selected_types, show_solutions=True):
 
 @app.route('/')
 def index():
-    return render_template('index_meg.html')
+    return render_template('index.html')
 
 
 @app.route('/api/generate', methods=['POST'])
