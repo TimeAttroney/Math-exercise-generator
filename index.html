@@ -624,30 +624,30 @@
         });
 
         // ===== OBTENER TIPOS SELECCIONADOS =====
-        function obtenerTiposSeleccionados() {
-            const tipos = [];
-            for (const [id, cantidad] of Object.entries(cantidades)) {
-                if (cantidad > 0) {
-                    tipos.push({ id, cantidad });
+        function getSelectedTypes() {
+            const types = [];
+            for (const [id, quantity] of Object.entries(cantidades)) {
+                if (quantity > 0) {
+                    types.push({ id, quantity });
                 }
             }
-            return tipos;
+            return types;
         }
 
-        // ===== GENERAR / PREVISUALIZAR =====
-        async function generar(esPreview) {
-            const tipos = obtenerTiposSeleccionados();
-            if (tipos.length === 0) {
+        // ===== GENERATE / PREVIEW =====
+        async function generate(esPreview) {
+            const types = getSelectedTypes();
+            if (types.length === 0) {
                 alert('⚠️ Select at least one subtype with quantity > 0');
                 return;
             }
 
-            const total = tipos.reduce((s, t) => s + t.cantidad, 0);
+            const total = types.reduce((s, t) => s + t.quantity, 0);
             const data = {
-                tipos: tipos,
-                dificultad: 'media',
-                mostrar_soluciones: document.getElementById('mostrar_soluciones').checked,
-                es_preview: esPreview
+                types: types,
+                difficulty: 'medium',
+                show_solutions: document.getElementById('mostrar_soluciones').checked,
+                is_preview: esPreview
             };
 
             const btn = document.getElementById('btn-generar');
@@ -656,7 +656,7 @@
             btn.disabled = true;
 
             try {
-                const endpoint = esPreview ? '/api/preview' : '/api/generar';
+                const endpoint = esPreview ? '/api/preview' : '/api/generate';
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -669,8 +669,8 @@
                 }
 
                 if (esPreview) {
-                    const ejercicios = await response.json();
-                    mostrarResultados(ejercicios, data.mostrar_soluciones);
+                    const exercises = await response.json();
+                    showResults(exercises, data.show_solutions);
                 } else {
                     const blob = await response.blob();
                     const url = URL.createObjectURL(blob);
@@ -692,75 +692,74 @@
             }
         }
 
-        document.getElementById('btn-generar').addEventListener('click', () => generar(false));
-        document.getElementById('btn-preview').addEventListener('click', () => generar(true));
+        document.getElementById('btn-generar').addEventListener('click', () => generate(false));
+        document.getElementById('btn-preview').addEventListener('click', () => generate(true));
 
-        // ===== MOSTRAR RESULTADOS =====
-        function mostrarResultados(ejercicios, mostrarSoluciones) {
+        // ===== SHOW RESULTS =====
+        function showResults(exercises, showSolutions) {
             const container = document.getElementById('resultados');
             const content = document.getElementById('resultados-content');
             const stats = document.getElementById('result-stats');
 
             container.style.display = 'block';
-            ejerciciosGenerados = ejercicios;
+            ejerciciosGenerados = exercises;
 
-            // Stats
-            const tiposMap = {};
-            ejercicios.forEach(ej => {
-                const t = ej.tipo || 'Desconocido';
-                tiposMap[t] = (tiposMap[t] || 0) + 1;
+            const typesMap = {};
+            exercises.forEach(ex => {
+                const t = ex.type || 'Unknown';
+                typesMap[t] = (typesMap[t] || 0) + 1;
             });
-            let statsHtml = `<div class="stat"><strong>Total:</strong> ${ejercicios.length} exercises</div>`;
-            for (const [tipo, count] of Object.entries(tiposMap)) {
-                statsHtml += `<div class="stat"><strong>${tipo}:</strong> ${count}</div>`;
+            let statsHtml = `<div class="stat"><strong>Total:</strong> ${exercises.length} exercises</div>`;
+            for (const [type, count] of Object.entries(typesMap)) {
+                statsHtml += `<div class="stat"><strong>${type}:</strong> ${count}</div>`;
             }
             stats.innerHTML = statsHtml;
 
-            if (ejercicios.length === 0) {
+            if (exercises.length === 0) {
                 content.innerHTML = '<div class="loading">⚠️ No exercises were generated</div>';
                 return;
             }
 
             let html = '';
-            ejercicios.forEach((ej, i) => {
-                const enunciadoTexto = ej.enunciado_texto || '';
-                const enunciadoImg = ej.enunciado_html || (ej.enunciado_img ?
-                    `<img src="data:image/png;base64,${ej.enunciado_img}" alt="Enunciado">` :
-                    `<span>${ej.enunciado || 'No statement'}</span>`);
+            exercises.forEach((ex, i) => {
+                const statementText = ex.statement_text || '';
+                const statementImg = ex.statement_html || (ex.statement_img ?
+                    `<img src="data:image/png;base64,${ex.statement_img}" alt="Statement">` :
+                    `<span>${ex.statement || 'No statement'}</span>`);
 
-                let solucionHtml = '';
-                if (mostrarSoluciones) {
-                    if (ej.solucion_html) {
-                        solucionHtml = ej.solucion_html;
-                    } else if (ej.solucion_img) {
-                        solucionHtml = `<img src="data:image/png;base64,${ej.solucion_img}" alt="Solution">`;
-                    } else if (ej.solucion) {
-                        solucionHtml = `<span>${ej.solucion}</span>`;
+                let solutionHtml = '';
+                if (showSolutions) {
+                    if (ex.solution_html) {
+                        solutionHtml = ex.solution_html;
+                    } else if (ex.solution_img) {
+                        solutionHtml = `<img src="data:image/png;base64,${ex.solution_img}" alt="Solution">`;
+                    } else if (ex.solution) {
+                        solutionHtml = `<span>${ex.solution}</span>`;
                     } else {
-                        solucionHtml = '<span class="ejercicio-solucion-oculta">🔍 No solution</span>';
+                        solutionHtml = '<span class="ejercicio-solucion-oculta">🔍 No solution</span>';
                     }
                 } else {
-                    solucionHtml = '<span class="ejercicio-solucion-oculta">🔒 Solution hidden</span>';
+                    solutionHtml = '<span class="ejercicio-solucion-oculta">🔒 Solution hidden</span>';
                 }
 
                 html += `
                     <div class="ejercicio-item">
                         <div class="ejercicio-header">
                             <span class="num">${i + 1}.</span>
-                            <span class="tipo">${ej.tipo || 'Exercise'}</span>
+                            <span class="tipo">${ex.type || 'Exercise'}</span>
                         </div>
-                        ${enunciadoTexto ? `<div class="ejercicio-enunciado-texto">${enunciadoTexto}</div>` : ''}
-                        <div class="ejercicio-enunciado">${enunciadoImg}</div>
-                        <div class="ejercicio-solucion">${solucionHtml}</div>
+                        ${statementText ? `<div class="ejercicio-enunciado-texto">${statementText}</div>` : ''}
+                        <div class="ejercicio-enunciado">${statementImg}</div>
+                        <div class="ejercicio-solucion">${solutionHtml}</div>
                     </div>
                 `;
             });
 
             content.innerHTML = html;
-            document.getElementById('titulo-resultados').textContent = `📋 Generated exercises (${ejercicios.length})`;
+            document.getElementById('titulo-resultados').textContent = `📋 Generated exercises (${exercises.length})`;
         }
 
-        // ===== LIMPIAR =====
+        // ===== CLEAR =====
         document.getElementById('btn-limpiar').addEventListener('click', function () {
             document.getElementById('resultados').style.display = 'none';
             ejerciciosGenerados = [];

@@ -11,23 +11,23 @@ import base64
 import os
 import sys
 import traceback
-from generator import GeneradorEjercicios
+from generador_meg_fixed import ExerciseGenerator
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.dirname(__file__))
 app.config['DEBUG'] = True
 
-# Inicializar el generador
+# Initialize the generator
 try:
-    generador = GeneradorEjercicios()
+    generator = ExerciseGenerator()
     print("✅ Generator initialized successfully")
 except Exception as e:
     print(f"❌ Error initializing generator: {e}")
     sys.exit(1)
 
-# Registrar fuentes para PDF
+# Register fonts for PDF
 
 
-def registrar_fuentes():
+def register_fonts():
     try:
         font_paths = [
             'C:/Windows/Fonts/times.ttf',
@@ -39,40 +39,40 @@ def registrar_fuentes():
             '/System/Library/Fonts/Time.ttf',
         ]
 
-        font_registrada = False
+        font_registered = False
         for path in font_paths:
             if os.path.exists(path):
                 try:
                     pdfmetrics.registerFont(TTFont('TimesNewRoman', path))
-                    font_registrada = True
-                    print(f"✅ Fuente Times New Roman registrada desde: {path}")
+                    font_registered = True
+                    print(f"✅ Times New Roman font registered from: {path}")
                     break
-                except:
+                except Exception:
                     continue
 
-        if not font_registrada:
-            print("⚠️ No se encontró Times New Roman, usando fuente por defecto")
+        if not font_registered:
+            print("⚠️ Times New Roman not found, using the default font")
     except Exception as e:
-        print(f"❌ Error al registrar fuentes: {e}")
+        print(f"❌ Error registering fonts: {e}")
 
 
-registrar_fuentes()
+register_fonts()
 
 
-def imagen_base64_a_reportlab(imagen_base64, ancho=400, alto=60):
+def image_base64_to_reportlab(image_base64, width=400, height=60):
     try:
-        if not imagen_base64:
+        if not image_base64:
             return None
-        imagen_bytes = base64.b64decode(imagen_base64)
-        buffer = io.BytesIO(imagen_bytes)
-        img = Image(buffer, width=ancho, height=alto)
+        image_bytes = base64.b64decode(image_base64)
+        buffer = io.BytesIO(image_bytes)
+        img = Image(buffer, width=width, height=height)
         return img
     except Exception as e:
-        print(f"❌ Error al convertir imagen: {e}")
+        print(f"❌ Error converting image: {e}")
         return None
 
 
-def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
+def create_exercise_pdf(selected_types, show_solutions=True):
     """Generate a PDF with exercises from the selected subtypes"""
     try:
         buffer = io.BytesIO()
@@ -82,8 +82,8 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
 
         styles = getSampleStyleSheet()
 
-        titulo_style = ParagraphStyle(
-            'Titulo',
+        title_style = ParagraphStyle(
+            'Title',
             parent=styles['Heading1'],
             fontName='TimesNewRoman',
             fontSize=20,
@@ -103,8 +103,8 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
             leading=16
         )
 
-        ejercicio_style = ParagraphStyle(
-            'Ejercicio',
+        exercise_style = ParagraphStyle(
+            'Exercise',
             parent=styles['Normal'],
             fontName='TimesNewRoman',
             fontSize=13,
@@ -114,8 +114,8 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
             textColor=colors.black
         )
 
-        solucion_style = ParagraphStyle(
-            'Solucion',
+        solution_style = ParagraphStyle(
+            'Solution',
             parent=styles['Normal'],
             fontName='TimesNewRoman',
             fontSize=11,
@@ -126,8 +126,8 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
             leftIndent=20
         )
 
-        tipo_style = ParagraphStyle(
-            'Tipo',
+        type_style = ParagraphStyle(
+            'Type',
             parent=styles['Italic'],
             fontName='TimesNewRoman',
             fontSize=10,
@@ -136,8 +136,8 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
             spaceAfter=8
         )
 
-        enunciado_texto_style = ParagraphStyle(
-            'EnunciadoTexto',
+        statement_text_style = ParagraphStyle(
+            'StatementText',
             parent=styles['Normal'],
             fontName='TimesNewRoman',
             fontSize=12,
@@ -147,77 +147,72 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
             textColor=colors.black
         )
 
-        # Generate exercises
-        print(
-            f"📝 Generating exercises for {len(tipos_seleccionados)} subtypes")
-        ejercicios = generador.generar_ejercicios_por_subtipos(
-            tipos_seleccionados)
-        print(f"✅ {len(ejercicios)} exercises generated")
+        print(f"📝 Generating exercises for {len(selected_types)} subtypes")
+        exercises = generator.generate_exercises_by_subtypes(selected_types)
+        print(f"✅ {len(exercises)} exercises generated")
 
         flowables = []
 
-        # Título
-        flowables.append(Paragraph(f"Exercise Sheet", titulo_style))
+        flowables.append(Paragraph("Exercise Sheet", title_style))
         flowables.append(
-            Paragraph(f"Total: {len(ejercicios)} exercises", normal_style))
+            Paragraph(f"Total: {len(exercises)} exercises", normal_style))
         flowables.append(Spacer(1, 20))
-        flowables.append(Paragraph("_"*80, normal_style))
+        flowables.append(Paragraph("_" * 80, normal_style))
         flowables.append(Spacer(1, 15))
 
-        # Add exercises
-        for i, ejercicio in enumerate(ejercicios, 1):
+        for i, exercise in enumerate(exercises, 1):
             try:
                 flowables.append(
-                    Paragraph(f"<b>Exercise {i}.</b>", ejercicio_style))
+                    Paragraph(f"<b>Exercise {i}.</b>", exercise_style))
 
-                if 'enunciado_texto' in ejercicio and ejercicio['enunciado_texto']:
+                if 'statement_text' in exercise and exercise['statement_text']:
                     flowables.append(
-                        Paragraph(f"<i>{ejercicio['enunciado_texto']}</i>", enunciado_texto_style))
+                        Paragraph(f"<i>{exercise['statement_text']}</i>", statement_text_style))
 
-                if 'enunciado_img' in ejercicio and ejercicio['enunciado_img']:
-                    enunciado_img = imagen_base64_a_reportlab(
-                        ejercicio['enunciado_img'], ancho=420, alto=65)
-                    if enunciado_img:
-                        flowables.append(enunciado_img)
+                if 'statement_img' in exercise and exercise['statement_img']:
+                    statement_img = image_base64_to_reportlab(
+                        exercise['statement_img'], width=420, height=65)
+                    if statement_img:
+                        flowables.append(statement_img)
                     else:
                         flowables.append(
-                            Paragraph(f"{ejercicio.get('enunciado', '')}", normal_style))
+                            Paragraph(f"{exercise.get('statement', '')}", normal_style))
                 else:
                     flowables.append(
-                        Paragraph(f"{ejercicio.get('enunciado', '')}", normal_style))
+                        Paragraph(f"{exercise.get('statement', '')}", normal_style))
 
-                if 'tipo' in ejercicio and ejercicio['tipo']:
+                if 'type' in exercise and exercise['type']:
                     flowables.append(
-                        Paragraph(f"<i>Type: {ejercicio['tipo']}</i>", tipo_style))
+                        Paragraph(f"<i>Type: {exercise['type']}</i>", type_style))
 
-                if mostrar_soluciones:
+                if show_solutions:
                     flowables.append(
-                        Paragraph("<b>Solution:</b>", solucion_style))
-                    if 'solucion_img' in ejercicio and ejercicio['solucion_img']:
-                        solucion_img = imagen_base64_a_reportlab(
-                            ejercicio['solucion_img'], ancho=320, alto=55)
-                        if solucion_img:
-                            flowables.append(solucion_img)
+                        Paragraph("<b>Solution:</b>", solution_style))
+                    if 'solution_img' in exercise and exercise['solution_img']:
+                        solution_img = image_base64_to_reportlab(
+                            exercise['solution_img'], width=320, height=55)
+                        if solution_img:
+                            flowables.append(solution_img)
                         else:
                             flowables.append(
-                                Paragraph(f"{ejercicio.get('solucion', '')}", normal_style))
+                                Paragraph(f"{exercise.get('solution', '')}", normal_style))
                     else:
                         flowables.append(
-                            Paragraph(f"{ejercicio.get('solucion', '')}", normal_style))
+                            Paragraph(f"{exercise.get('solution', '')}", normal_style))
                 else:
                     flowables.append(Spacer(1, 5))
                     flowables.append(
                         Paragraph("<i>Space for solving:</i>", normal_style))
                     flowables.append(Spacer(1, 30))
-                    flowables.append(Paragraph("."*60, normal_style))
+                    flowables.append(Paragraph("." * 60, normal_style))
 
                 flowables.append(Spacer(1, 15))
 
-                if i < len(ejercicios):
-                    flowables.append(Paragraph("—"*70, normal_style))
+                if i < len(exercises):
+                    flowables.append(Paragraph("—" * 70, normal_style))
                     flowables.append(Spacer(1, 15))
 
-                if i % 4 == 0 and i < len(ejercicios):
+                if i % 4 == 0 and i < len(exercises):
                     flowables.append(PageBreak())
 
             except Exception as e:
@@ -241,32 +236,32 @@ def crear_pdf_ejercicios(tipos_seleccionados, mostrar_soluciones=True):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index_meg.html')
 
 
-@app.route('/api/generar', methods=['POST'])
-def generar_pdf():
+@app.route('/api/generate', methods=['POST'])
+def generate_pdf():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'No se recibieron datos'}), 400
+            return jsonify({'error': 'No data received'}), 400
 
-        tipos = data.get('tipos', [])
-        mostrar_soluciones = data.get('mostrar_soluciones', True)
+        selected_types = data.get('types', [])
+        show_solutions = data.get('show_solutions', True)
 
-        if not tipos:
-            return jsonify({'error': 'No se seleccionaron subtipos'}), 400
+        if not selected_types:
+            return jsonify({'error': 'No subtypes selected'}), 400
 
         print(f"\n🚀 PDF request received:")
-        print(f"   - Subtypes: {len(tipos)}")
-        print(f"   - Show solutions: {mostrar_soluciones}")
+        print(f"   - Subtypes: {len(selected_types)}")
+        print(f"   - Show solutions: {show_solutions}")
 
-        pdf_buffer = crear_pdf_ejercicios(tipos, mostrar_soluciones)
+        pdf_buffer = create_exercise_pdf(selected_types, show_solutions)
 
         return send_file(
             pdf_buffer,
             as_attachment=True,
-            download_name=f'MEG_{len(tipos)}exercises.pdf',
+            download_name=f'MEG_{len(selected_types)}exercises.pdf',
             mimetype='application/pdf'
         )
 
@@ -277,50 +272,51 @@ def generar_pdf():
 
 
 @app.route('/api/preview', methods=['POST'])
-def previsualizar():
+def preview():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'No se recibieron datos'}), 400
+            return jsonify({'error': 'No data received'}), 400
 
-        tipos = data.get('tipos', [])
-        mostrar_soluciones = data.get('mostrar_soluciones', True)
+        selected_types = data.get('types', [])
+        show_solutions = data.get('show_solutions', True)
 
-        if not tipos:
-            return jsonify({'error': 'No se seleccionaron subtipos'}), 400
+        if not selected_types:
+            return jsonify({'error': 'No subtypes selected'}), 400
 
         print(f"\n👁️ Preview requested:")
-        print(f"   - Subtypes: {len(tipos)}")
+        print(f"   - Subtypes: {len(selected_types)}")
 
-        ejercicios = generador.generar_ejercicios_por_subtipos(tipos)
+        exercises = generator.generate_exercises_by_subtypes(selected_types)
 
-        for ej in ejercicios:
+        for exercise in exercises:
             try:
-                enunciado_html = ""
-                if 'enunciado_texto' in ej and ej['enunciado_texto']:
-                    enunciado_html += f"<div style='font-weight: bold; color: #1a1a2e; margin-bottom: 8px;'>{ej['enunciado_texto']}</div>"
+                statement_html = ""
+                if 'statement_text' in exercise and exercise['statement_text']:
+                    statement_html += f"<div style='font-weight: bold; color: #1a1a2e; margin-bottom: 8px;'>{exercise['statement_text']}</div>"
 
-                if 'enunciado_img' in ej and ej['enunciado_img']:
-                    enunciado_html += f'<img src="data:image/png;base64,{ej["enunciado_img"]}" style="max-width: 100%;">'
+                if 'statement_img' in exercise and exercise['statement_img']:
+                    statement_html += f'<img src="data:image/png;base64,{exercise["statement_img"]}" style="max-width: 100%;">'
                 else:
-                    enunciado_html += f'<div>{ej.get("enunciado", "")}</div>'
+                    statement_html += f'<div>{exercise.get("statement", "")}</div>'
 
-                ej['enunciado_html'] = enunciado_html
+                exercise['statement_html'] = statement_html
 
-                if mostrar_soluciones:
-                    if 'solucion_img' in ej and ej['solucion_img']:
-                        ej['solucion_html'] = f'<img src="data:image/png;base64,{ej["solucion_img"]}" style="max-width: 100%;">'
+                if show_solutions:
+                    if 'solution_img' in exercise and exercise['solution_img']:
+                        exercise['solution_html'] = f'<img src="data:image/png;base64,{exercise["solution_img"]}" style="max-width: 100%;">'
                     else:
-                        ej['solucion_html'] = f'<b>Solution:</b> {ej.get("solucion", "")}'
+                        exercise['solution_html'] = f'<b>Solution:</b> {exercise.get("solution", "")}'
                 else:
-                    ej['solucion_html'] = '<i style="color:#94a3b8;">🔒 Solution hidden (for practice)</i>'
+                    exercise[
+                        'solution_html'] = '<i style="color:#94a3b8;">🔒 Solution hidden (for practice)</i>'
 
             except Exception as e:
                 print(f"❌ Error processing image: {e}")
-                ej['enunciado_html'] = f'<b>Error rendering:</b> {ej.get("enunciado", "")}'
-                ej['solucion_html'] = f'<b>Error rendering:</b> {ej.get("solucion", "")}'
+                exercise['statement_html'] = f'<b>Error rendering:</b> {exercise.get("statement", "")}'
+                exercise['solution_html'] = f'<b>Error rendering:</b> {exercise.get("solution", "")}'
 
-        return jsonify(ejercicios)
+        return jsonify(exercises)
 
     except Exception as e:
         print(f"❌ Error in /api/preview: {e}")

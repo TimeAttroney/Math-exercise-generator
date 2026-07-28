@@ -1,876 +1,460 @@
-import traceback
+from sympy import Rational, symbols, sin, cos, tan, exp, log, sqrt
+import sympy as sp
+import matplotlib.pyplot as plt
 import base64
 import io
-import matplotlib.pyplot as plt
-import random
-import sympy as sp
-from sympy import symbols, Integral, Derivative, Limit, sin, cos, tan, exp, log, sqrt, Rational, pi, oo, solve
+
 import matplotlib
 matplotlib.use('Agg')
 
-# ===== CONFIGURACIÓN =====
-print("📐 Usando renderizado sin LaTeX (Times New Roman)")
-plt.rcParams['text.usetex'] = False
-plt.rcParams['font.family'] = 'serif'
-plt.rcParams['font.serif'] = ['Times New Roman',
-                              'DejaVu Serif', 'Computer Modern Roman']
-plt.rcParams['mathtext.fontset'] = 'stix'
-plt.rcParams['mathtext.default'] = 'regular'
 
-
-class GeneradorEjercicios:
+class ExerciseGenerator:
     def __init__(self):
-        try:
-            self.x = symbols('x')
-            self.y = symbols('y')
-            # Mapa de subtipos a funciones generadoras
-            self.subtipos_map = {
-                # ===== INTEGRALES =====
-                'int_inmediata_potencia': self._integral_polinomica,
-                'int_inmediata_log': self._integral_logaritmo,
-                'int_inmediata_exp': self._integral_exponencial,
-                'int_inmediata_trig': self._integral_trigonometrica,
-                'int_inmediata_invtrig': self._integral_inversa_trig,
-                'int_casi_potencia': self._integral_casi_potencia,
-                'int_casi_log': self._integral_casi_log,
-                'int_casi_exp': self._integral_casi_exp,
-                'int_casi_trig': self._integral_casi_trig,
-                'int_casi_invtrig': self._integral_casi_invtrig,
-                'int_casi_logacot': self._integral_casi_logacot,
-                'int_rac_simples': self._integral_rac_simples,
-                'int_rac_multiples': self._integral_rac_multiples,
-                'int_rac_grado2': self._integral_rac_grado2,
-                'int_trig': self._integral_trig_especial,
-                'int_partes': self._integral_por_partes,
-                'int_cambio_fractrig': self._integral_cambio_fractrig,
-                'int_cambio_irracional': self._integral_cambio_irracional,
-                # ===== DERIVADAS =====
-                'der_polinomica': self._derivada_polinomica,
-                'der_trigonometrica': self._derivada_trigonometrica,
-                'der_exponencial': self._derivada_exponencial,
-                'der_logaritmica': self._derivada_logaritmica,
-                'der_regla_cadena': self._derivada_regla_cadena,
-                'der_implicita': self._derivada_implicita,
-                # ===== LÍMITES =====
-                'lim_infinito': self._limite_infinito,
-                'lim_indeterminado': self._limite_indeterminado,
-                'lim_trigonometrico': self._limite_trigonometrico,
-                'lim_especial': self._limite_especial,
-                # ===== FRACCIONES =====
-                'frac_simplificar': self._fraccion_simplificar,
-                'frac_sumar': self._fraccion_sumar,
-                'frac_multiplicar': self._fraccion_multiplicar,
-                'frac_division': self._fraccion_division,
-                # ===== FUNCIONES =====
-                'func_dominio': self._funcion_dominio,
-                'func_recorrido': self._funcion_recorrido,
-                'func_ceros': self._funcion_ceros,
-                'func_crecimiento': self._funcion_crecimiento,
-                # ===== EXTREMOS =====
-                'ext_polinomico': self._extremo_polinomico,
-                'ext_trigonometrico': self._extremo_trigonometrico,
-                'ext_racional': self._extremo_racional,
-                # ===== ASÍNTOTAS =====
-                'asint_vertical': self._asintota_vertical,
-                'asint_horizontal': self._asintota_horizontal,
-                'asint_oblicua': self._asintota_oblicua,
-                'asint_mixta': self._asintota_mixta,
-                # ===== ANÁLISIS =====
-                'anal_polinomico': self._analisis_polinomico,
-                'anal_racional': self._analisis_racional,
-                'anal_trigonometrico': self._analisis_trigonometrico
-            }
-            # Nombres descriptivos para cada subtipo
-            self.subtipos_nombres = {
-                'int_inmediata_potencia': 'Integral inmediata: Potencia',
-                'int_inmediata_log': 'Integral inmediata: Logaritmo',
-                'int_inmediata_exp': 'Integral inmediata: Exponencial',
-                'int_inmediata_trig': 'Integral inmediata: Trigonométrica',
-                'int_inmediata_invtrig': 'Integral inmediata: Inversa trigonométrica',
-                'int_casi_potencia': 'Integral casi inmediata: Potencia',
-                'int_casi_log': 'Integral casi inmediata: Logaritmo',
-                'int_casi_exp': 'Integral casi inmediata: Exponencial',
-                'int_casi_trig': 'Integral casi inmediata: Trigonométrica',
-                'int_casi_invtrig': 'Integral casi inmediata: Inversa trigonométrica',
-                'int_casi_logacot': 'Integral casi inmediata: Logaritmo + acotangente',
-                'int_rac_simples': 'Integral racional: Raíces simples',
-                'int_rac_multiples': 'Integral racional: Raíces múltiples',
-                'int_rac_grado2': 'Integral racional: Factor grado 2',
-                'int_trig': 'Integral trigonométrica especial',
-                'int_partes': 'Integral por partes',
-                'int_cambio_fractrig': 'Integral por cambio: Fracción trigonométrica',
-                'int_cambio_irracional': 'Integral por cambio: Función irracional',
-                'der_polinomica': 'Derivada polinómica',
-                'der_trigonometrica': 'Derivada trigonométrica',
-                'der_exponencial': 'Derivada exponencial',
-                'der_logaritmica': 'Derivada logarítmica',
-                'der_regla_cadena': 'Derivada: Regla de la cadena',
-                'der_implicita': 'Derivada implícita',
-                'lim_infinito': 'Límite al infinito',
-                'lim_indeterminado': 'Límite con indeterminación',
-                'lim_trigonometrico': 'Límite trigonométrico',
-                'lim_especial': 'Límite especial (número e)',
-                'frac_simplificar': 'Simplificar fracción',
-                'frac_sumar': 'Suma de fracciones',
-                'frac_multiplicar': 'Multiplicación de fracciones',
-                'frac_division': 'División de fracciones',
-                'func_dominio': 'Dominio de función',
-                'func_recorrido': 'Recorrido de función',
-                'func_ceros': 'Ceros de función',
-                'func_crecimiento': 'Crecimiento de función',
-                'ext_polinomico': 'Extremos: Polinómico',
-                'ext_trigonometrico': 'Extremos: Trigonométrico',
-                'ext_racional': 'Extremos: Racional',
-                'asint_vertical': 'Asíntota vertical',
-                'asint_horizontal': 'Asíntota horizontal',
-                'asint_oblicua': 'Asíntota oblicua',
-                'asint_mixta': 'Asíntotas múltiples',
-                'anal_polinomico': 'Análisis: Polinómico',
-                'anal_racional': 'Análisis: Racional',
-                'anal_trigonometrico': 'Análisis: Trigonométrico'
-            }
-            print("✅ Generador inicializado con 48 subtipos de ejercicios")
-        except Exception as e:
-            print(f"❌ Error al inicializar: {e}")
-            raise
+        self.x = symbols('x')
+        self.y = symbols('y')
+        self.subtypes_map = {
+            'int_inmediata_potencia': self._integral_polynomial,
+            'int_inmediata_log': self._integral_logarithm,
+            'int_inmediata_exp': self._integral_exponential,
+            'int_inmediata_trig': self._integral_trigonometric,
+            'int_inmediata_invtrig': self._integral_inverse_trig,
+            'int_casi_potencia': self._integral_almost_power,
+            'int_casi_log': self._integral_almost_log,
+            'int_casi_exp': self._integral_almost_exp,
+            'int_casi_trig': self._integral_almost_trig,
+            'int_casi_invtrig': self._integral_almost_invtrig,
+            'int_casi_logacot': self._integral_almost_logacot,
+            'int_rac_simples': self._integral_rational_simple,
+            'int_rac_multiples': self._integral_rational_multiple,
+            'int_rac_grado2': self._integral_rational_degree2,
+            'int_trig': self._integral_trig_special,
+            'int_partes': self._integral_by_parts,
+            'int_cambio_fractrig': self._integral_change_fraction_trig,
+            'int_cambio_irracional': self._integral_change_irrational,
+            'der_polinomica': self._derivative_polynomial,
+            'der_trigonometrica': self._derivative_trigonometric,
+            'der_exponencial': self._derivative_exponential,
+            'der_logaritmica': self._derivative_logarithmic,
+            'der_regla_cadena': self._derivative_chain_rule,
+            'der_implicita': self._derivative_implicit,
+            'lim_infinito': self._limit_infinity,
+            'lim_indeterminado': self._limit_indeterminate,
+            'lim_trigonometrico': self._limit_trigonometric,
+            'lim_especial': self._limit_special,
+            'frac_simplificar': self._fraction_simplify,
+            'frac_sumar': self._fraction_add,
+            'frac_multiplicar': self._fraction_multiply,
+            'frac_division': self._fraction_divide,
+            'func_dominio': self._function_domain,
+            'func_recorrido': self._function_range,
+            'func_ceros': self._function_zeros,
+            'func_crecimiento': self._function_growth,
+            'ext_polinomico': self._extreme_polynomial,
+            'ext_trigonometrico': self._extreme_trigonometric,
+            'ext_racional': self._extreme_rational,
+            'asint_vertical': self._asymptote_vertical,
+            'asint_horizontal': self._asymptote_horizontal,
+            'asint_oblicua': self._asymptote_oblique,
+            'asint_mixta': self._asymptote_mixed,
+            'anal_polinomico': self._analysis_polynomial,
+            'anal_racional': self._analysis_rational,
+            'anal_trigonometrico': self._analysis_trigonometric,
+        }
+        self.subtypes_names = {
+            'int_inmediata_potencia': 'Immediate integral: power',
+            'int_inmediata_log': 'Immediate integral: logarithm',
+            'int_inmediata_exp': 'Immediate integral: exponential',
+            'int_inmediata_trig': 'Immediate integral: trigonometric',
+            'int_inmediata_invtrig': 'Immediate integral: inverse trigonometric',
+            'int_casi_potencia': 'Almost immediate integral: power',
+            'int_casi_log': 'Almost immediate integral: logarithm',
+            'int_casi_exp': 'Almost immediate integral: exponential',
+            'int_casi_trig': 'Almost immediate integral: trigonometric',
+            'int_casi_invtrig': 'Almost immediate integral: inverse trigonometric',
+            'int_casi_logacot': 'Almost immediate integral: logarithm + arctangent',
+            'int_rac_simples': 'Rational integral: simple roots',
+            'int_rac_multiples': 'Rational integral: multiple roots',
+            'int_rac_grado2': 'Rational integral: quadratic factor',
+            'int_trig': 'Special trigonometric integral',
+            'int_partes': 'Integration by parts',
+            'int_cambio_fractrig': 'Substitution integral: trigonometric fraction',
+            'int_cambio_irracional': 'Substitution integral: irrational function',
+            'der_polinomica': 'Derivative: polynomial',
+            'der_trigonometrica': 'Derivative: trigonometric',
+            'der_exponencial': 'Derivative: exponential',
+            'der_logaritmica': 'Derivative: logarithmic',
+            'der_regla_cadena': 'Derivative: chain rule',
+            'der_implicita': 'Derivative: implicit',
+            'lim_infinito': 'Limit at infinity',
+            'lim_indeterminado': 'Limit with indeterminate form',
+            'lim_trigonometrico': 'Trigonometric limit',
+            'lim_especial': 'Special limit (Euler number)',
+            'frac_simplificar': 'Simplify fraction',
+            'frac_sumar': 'Add fractions',
+            'frac_multiplicar': 'Multiply fractions',
+            'frac_division': 'Divide fractions',
+            'func_dominio': 'Function domain',
+            'func_recorrido': 'Function range',
+            'func_ceros': 'Function zeros',
+            'func_crecimiento': 'Function growth',
+            'ext_polinomico': 'Extrema: polynomial',
+            'ext_trigonometrico': 'Extrema: trigonometric',
+            'ext_racional': 'Extrema: rational',
+            'asint_vertical': 'Vertical asymptote',
+            'asint_horizontal': 'Horizontal asymptote',
+            'asint_oblicua': 'Oblique asymptote',
+            'asint_mixta': 'Mixed asymptotes',
+            'anal_polinomico': 'Analysis: polynomial',
+            'anal_racional': 'Analysis: rational',
+            'anal_trigonometrico': 'Analysis: trigonometric',
+        }
 
-    def renderizar_expresion(self, expresion_latex, tamaño=16):
-        """Convierte una expresión LaTeX a una imagen PNG en base64"""
-        try:
-            if not expresion_latex:
-                return None
-
-            fig, ax = plt.subplots(figsize=(7, 1.2))
-            ax.axis('off')
-            ax.text(0.5, 0.5, f'${expresion_latex}$',
-                    fontsize=tamaño, ha='center', va='center')
-
-            plt.tight_layout(pad=0.1)
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png', dpi=150, bbox_inches='tight',
-                        pad_inches=0.05, facecolor='white')
-            plt.close(fig)
-            buf.seek(0)
-            return base64.b64encode(buf.read()).decode('utf-8')
-        except Exception as e:
-            print(f"❌ Error al renderizar: {e}")
+    def render_expression(self, latex_expression, size=16):
+        if not latex_expression:
             return None
+        fig, ax = plt.subplots(figsize=(7, 1.2))
+        ax.axis('off')
+        ax.text(0.5, 0.5, f'${latex_expression}$',
+                fontsize=size, ha='center', va='center')
+        plt.tight_layout(pad=0.1)
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight',
+                    pad_inches=0.05, facecolor='white')
+        plt.close(fig)
+        buf.seek(0)
+        return base64.b64encode(buf.read()).decode('utf-8')
 
-    def generar_ejercicios_por_subtipos(self, tipos_seleccionados):
-        """
-        Genera ejercicios para una lista de subtipos con sus cantidades
-        tipos_seleccionados: [{'id': 'int_inmediata_potencia', 'cantidad': 2}, ...]
-        """
-        try:
-            ejercicios = []
-            for item in tipos_seleccionados:
-                subtipo_id = item['id']
-                cantidad = item.get('cantidad', 1)
+    def generate_exercises_by_subtypes(self, selected_types):
+        exercises = []
+        for item in selected_types:
+            subtype_id = item['id']
+            quantity = item.get('quantity', 1)
+            if subtype_id not in self.subtypes_map:
+                continue
+            generator_func = self.subtypes_map[subtype_id]
+            name = self.subtypes_names.get(subtype_id, subtype_id)
+            for _ in range(quantity):
+                exercise = generator_func('medium')
+                exercise['type'] = name
+                exercises.append(exercise)
+        return exercises
 
-                if subtipo_id not in self.subtipos_map:
-                    print(f"⚠️ Subtipo no reconocido: {subtipo_id}")
-                    continue
-
-                generador = self.subtipos_map[subtipo_id]
-                nombre = self.subtipos_nombres.get(subtipo_id, subtipo_id)
-
-                print(f"   - Generando {cantidad} de {nombre}")
-                for i in range(cantidad):
-                    try:
-                        ejercicio = generador('media')
-                        ejercicio['tipo'] = nombre
-                        ejercicios.append(ejercicio)
-                    except Exception as e:
-                        print(f"      ❌ Error: {e}")
-                        ejercicios.append(self._ejercicio_error(nombre))
-
-            print(f"✅ {len(ejercicios)} ejercicios generados")
-            return ejercicios
-
-        except Exception as e:
-            print(f"❌ Error en generar_ejercicios_por_subtipos: {e}")
-            traceback.print_exc()
-            raise
-
-    # ============================================================
-    # ===== FUNCIONES GENERADORAS DE EJERCICIOS =====
-    # ============================================================
-
-    # ---------- INTEGRALES INMEDIATAS ----------
-    def _integral_polinomica(self, dificultad):
-        n = random.randint(
-            1, 5) if dificultad == 'facil' else random.randint(2, 8)
-        if dificultad == 'dificil':
-            n = random.randint(3, 10)
-        coeficiente = random.randint(1, 5)
-        expr = coeficiente * self.x**n
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+    def _exercise_error(self, name):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral inmediata',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': 'Error generating exercise',
+            'solution': 'Error generating solution',
+            'statement_text': f'Could not generate the exercise for {name}',
+            'statement_img': None,
+            'solution_img': None,
+            'type': name,
         }
 
-    def _integral_logaritmo(self, dificultad):
-        expr = 1/self.x
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+    def _make_integral(self, expr, statement_text):
+        solution = sp.integrate(expr, self.x)
+        statement_latex = r'\int ' + sp.latex(expr) + r' \, dx'
+        solution_latex = sp.latex(solution) + ' + C'
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral logarítmica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': statement_latex,
+            'solution': solution_latex,
+            'statement_text': statement_text,
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
-    def _integral_exponencial(self, dificultad):
-        if dificultad == 'facil':
-            expr = exp(self.x)
-        else:
-            base = random.randint(2, 5)
-            expr = base**self.x
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+    def _make_derivative(self, expr, statement_text):
+        solution = sp.diff(expr, self.x)
+        statement_latex = sp.latex(expr)
+        solution_latex = sp.latex(solution)
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral exponencial',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': f'Find the derivative of {statement_latex}',
+            'solution': solution_latex,
+            'statement_text': statement_text,
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
-    def _integral_trigonometrica(self, dificultad):
-        funcs = [sin, cos, tan]
-        func = random.choice(funcs)
-        expr = func(self.x)
-        if dificultad == 'dificil':
-            expr = func(2*self.x) * random.choice([sin, cos])(self.x)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+    def _make_limit(self, expr, statement_text):
+        solution = sp.limit(expr, self.x, sp.oo)
+        statement_latex = r'\lim_{x \to \infty} ' + sp.latex(expr)
+        solution_latex = sp.latex(solution)
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral trigonométrica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': statement_latex,
+            'solution': solution_latex,
+            'statement_text': statement_text,
+            'statement_img': self.render_expression(statement_latex),
+            'solution_img': self.render_expression(solution_latex),
         }
 
-    def _integral_inversa_trig(self, dificultad):
-        expr = 1/(1 + self.x**2)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral (inversa trigonométrica)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_polynomial(self, difficulty):
+        expr = 3 * self.x**4 + 2 * self.x**2 - 5 * self.x
+        return self._make_integral(expr, 'Calculate the following immediate integral')
 
-    # ---------- INTEGRALES CASI INMEDIATAS ----------
-    def _integral_casi_potencia(self, dificultad):
-        n = random.randint(1, 3)
-        expr = (2*self.x + 1)**n
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral casi inmediata (potencia)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_logarithm(self, difficulty):
+        expr = 1 / self.x
+        return self._make_integral(expr, 'Calculate the following logarithmic integral')
 
-    def _integral_casi_log(self, dificultad):
-        expr = 1/(2*self.x + 1)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral casi inmediata (logaritmo)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_exponential(self, difficulty):
+        expr = exp(self.x)
+        return self._make_integral(expr, 'Calculate the following exponential integral')
 
-    def _integral_casi_exp(self, dificultad):
-        expr = exp(2*self.x + 1)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral casi inmediata (exponencial)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_trigonometric(self, difficulty):
+        expr = sin(self.x)
+        return self._make_integral(expr, 'Calculate the following trigonometric integral')
 
-    def _integral_casi_trig(self, dificultad):
-        expr = sin(2*self.x + 1)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral casi inmediata (trigonométrica)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_inverse_trig(self, difficulty):
+        expr = 1 / (1 + self.x**2)
+        return self._make_integral(expr, 'Calculate the following inverse trigonometric integral')
 
-    def _integral_casi_invtrig(self, dificultad):
-        expr = 1/(1 + (2*self.x)**2)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral casi inmediata (inversa trigonométrica)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_almost_power(self, difficulty):
+        expr = (2 * self.x + 1) ** 2
+        return self._make_integral(expr, 'Calculate the following almost immediate integral')
 
-    def _integral_casi_logacot(self, dificultad):
-        expr = (2*self.x)/(1 + self.x**2)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral casi inmediata (logaritmo + acotangente)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_almost_log(self, difficulty):
+        expr = 1 / (2 * self.x + 1)
+        return self._make_integral(expr, 'Calculate the following almost immediate logarithmic integral')
 
-    # ---------- INTEGRALES RACIONALES ----------
-    def _integral_rac_simples(self, dificultad):
-        expr = 1/(self.x**2 - 1)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral racional (raíces simples)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_almost_exp(self, difficulty):
+        expr = exp(2 * self.x + 1)
+        return self._make_integral(expr, 'Calculate the following almost immediate exponential integral')
 
-    def _integral_rac_multiples(self, dificultad):
-        expr = 1/(self.x**3 - self.x)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral racional (raíces múltiples)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_almost_trig(self, difficulty):
+        expr = sin(2 * self.x + 1)
+        return self._make_integral(expr, 'Calculate the following almost immediate trigonometric integral')
 
-    def _integral_rac_grado2(self, dificultad):
-        expr = 1/(self.x**2 + 2*self.x + 2)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral racional (factor grado 2)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_almost_invtrig(self, difficulty):
+        expr = 1 / (1 + (2 * self.x) ** 2)
+        return self._make_integral(expr, 'Calculate the following almost immediate inverse trigonometric integral')
 
-    # ---------- OTRAS INTEGRALES ----------
-    def _integral_trig_especial(self, dificultad):
-        expr = sin(self.x)**2
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral trigonométrica especial',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
+    def _integral_almost_logacot(self, difficulty):
+        expr = (2 * self.x) / (1 + self.x**2)
+        return self._make_integral(expr, 'Calculate the following almost immediate integral with logarithm and arctangent')
 
-    def _integral_por_partes(self, dificultad):
+    def _integral_rational_simple(self, difficulty):
+        expr = 1 / (self.x**2 - 1)
+        return self._make_integral(expr, 'Calculate the following rational integral with simple roots')
+
+    def _integral_rational_multiple(self, difficulty):
+        expr = 1 / (self.x**3 - self.x)
+        return self._make_integral(expr, 'Calculate the following rational integral with multiple roots')
+
+    def _integral_rational_degree2(self, difficulty):
+        expr = 1 / (self.x**2 + 2 * self.x + 2)
+        return self._make_integral(expr, 'Calculate the following rational integral with a quadratic factor')
+
+    def _integral_trig_special(self, difficulty):
+        expr = sin(self.x) ** 2
+        return self._make_integral(expr, 'Calculate the following special trigonometric integral')
+
+    def _integral_by_parts(self, difficulty):
         expr = self.x * exp(self.x)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+        return self._make_integral(expr, 'Calculate the following integral by parts')
+
+    def _integral_change_fraction_trig(self, difficulty):
+        expr = sin(self.x) / cos(self.x)
+        return self._make_integral(expr, 'Calculate the following integral through a trigonometric substitution')
+
+    def _integral_change_irrational(self, difficulty):
+        expr = sqrt(self.x)
+        return self._make_integral(expr, 'Calculate the following integral with an irrational function')
+
+    def _derivative_polynomial(self, difficulty):
+        expr = 3 * self.x**4 + 2 * self.x**2 - 5 * self.x
+        return self._make_derivative(expr, 'Find the derivative of the following polynomial')
+
+    def _derivative_trigonometric(self, difficulty):
+        expr = sin(self.x) * cos(self.x)
+        return self._make_derivative(expr, 'Find the derivative of the following trigonometric function')
+
+    def _derivative_exponential(self, difficulty):
+        expr = exp(2 * self.x)
+        return self._make_derivative(expr, 'Find the derivative of the following exponential function')
+
+    def _derivative_logarithmic(self, difficulty):
+        expr = log(self.x**2 + 1)
+        return self._make_derivative(expr, 'Find the derivative of the following logarithmic function')
+
+    def _derivative_chain_rule(self, difficulty):
+        expr = (self.x**2 + 1) ** 3
+        return self._make_derivative(expr, 'Find the derivative using the chain rule')
+
+    def _derivative_implicit(self, difficulty):
+        expr = self.x**2 + self.y**2 - 1
+        return self._make_derivative(expr, 'Find the implicit derivative of the following relation')
+
+    def _limit_infinity(self, difficulty):
+        expr = (2 * self.x + 1) / (self.x + 1)
+        return self._make_limit(expr, 'Find the limit as x tends to infinity')
+
+    def _limit_indeterminate(self, difficulty):
+        expr = (self.x**2 - 1) / (self.x - 1)
+        return self._make_limit(expr, 'Find the limit of the indeterminate form')
+
+    def _limit_trigonometric(self, difficulty):
+        expr = sin(self.x) / self.x
+        return self._make_limit(expr, 'Find the trigonometric limit')
+
+    def _limit_special(self, difficulty):
+        expr = (1 + 1 / self.x) ** self.x
+        return self._make_limit(expr, "Find the special limit involving Euler's number")
+
+    def _fraction_simplify(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral por partes',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'\frac{6}{8}',
+            'solution': r'\frac{3}{4}',
+            'statement_text': 'Simplify the following fraction',
+            'statement_img': self.render_expression(r'\frac{6}{8}'),
+            'solution_img': self.render_expression(r'\frac{3}{4}'),
         }
 
-    def _integral_cambio_fractrig(self, dificultad):
-        expr = 1/(sin(self.x) + cos(self.x))
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+    def _fraction_add(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral por cambio de variable (fracción trigonométrica)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'\frac{1}{3} + \frac{1}{6}',
+            'solution': sp.latex(Rational(1, 3) + Rational(1, 6)),
+            'statement_text': 'Add the following fractions',
+            'statement_img': self.render_expression(r'\frac{1}{3} + \frac{1}{6}'),
+            'solution_img': self.render_expression(sp.latex(Rational(1, 3) + Rational(1, 6))),
         }
 
-    def _integral_cambio_irracional(self, dificultad):
-        expr = sqrt(self.x + 1)
-        solucion = sp.integrate(expr, self.x)
-        enunciado_latex = '\\int ' + sp.latex(expr) + ' \\, dx'
-        solucion_latex = sp.latex(solucion) + ' + C'
+    def _fraction_multiply(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la siguiente integral por cambio de variable (función irracional)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'\frac{2}{5} \cdot \frac{3}{4}',
+            'solution': sp.latex(Rational(2, 5) * Rational(3, 4)),
+            'statement_text': 'Multiply the following fractions',
+            'statement_img': self.render_expression(r'\frac{2}{5} \cdot \frac{3}{4}'),
+            'solution_img': self.render_expression(sp.latex(Rational(2, 5) * Rational(3, 4))),
         }
 
-    # ---------- DERIVADAS ----------
-    def _derivada_polinomica(self, dificultad):
-        n = random.randint(
-            1, 4) if dificultad == 'facil' else random.randint(2, 6)
-        coeficiente = random.randint(1, 5)
-        expr = coeficiente * self.x**n
-        solucion = sp.diff(expr, self.x)
-        enunciado_latex = '\\frac{d}{dx}(' + sp.latex(expr) + ')'
-        solucion_latex = sp.latex(solucion)
+    def _fraction_divide(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Deriva la siguiente función polinómica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'\frac{3}{4} \div \frac{1}{2}',
+            'solution': sp.latex(Rational(3, 4) / Rational(1, 2)),
+            'statement_text': 'Divide the following fractions',
+            'statement_img': self.render_expression(r'\frac{3}{4} \div \frac{1}{2}'),
+            'solution_img': self.render_expression(sp.latex(Rational(3, 4) / Rational(1, 2))),
         }
 
-    def _derivada_trigonometrica(self, dificultad):
-        funcs = [sin, cos, tan]
-        func = random.choice(funcs)
-        expr = func(self.x)
-        if dificultad == 'dificil':
-            expr = func(2*self.x + 1)
-        solucion = sp.diff(expr, self.x)
-        enunciado_latex = '\\frac{d}{dx}(' + sp.latex(expr) + ')'
-        solucion_latex = sp.latex(solucion)
+    def _function_domain(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Deriva la siguiente función trigonométrica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'\sqrt{x-1}',
+            'solution': 'x \\ge 1',
+            'statement_text': 'Find the domain of the following function',
+            'statement_img': self.render_expression(r'\sqrt{x-1}'),
+            'solution_img': self.render_expression('x \\ge 1'),
         }
 
-    def _derivada_exponencial(self, dificultad):
-        if dificultad == 'facil':
-            expr = exp(self.x)
-        else:
-            expr = exp(2*self.x + 1)
-        solucion = sp.diff(expr, self.x)
-        enunciado_latex = '\\frac{d}{dx}(' + sp.latex(expr) + ')'
-        solucion_latex = sp.latex(solucion)
+    def _function_range(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Deriva la siguiente función exponencial',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=x^2',
+            'solution': 'y \\ge 0',
+            'statement_text': 'Find the range of the following function',
+            'statement_img': self.render_expression(r'f(x)=x^2'),
+            'solution_img': self.render_expression('y \\ge 0'),
         }
 
-    def _derivada_logaritmica(self, dificultad):
-        expr = log(self.x)
-        solucion = sp.diff(expr, self.x)
-        enunciado_latex = '\\frac{d}{dx}(' + sp.latex(expr) + ')'
-        solucion_latex = sp.latex(solucion)
+    def _function_zeros(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Deriva la siguiente función logarítmica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'x^2-4',
+            'solution': 'x = -2, 2',
+            'statement_text': 'Find the zeros of the following function',
+            'statement_img': self.render_expression(r'x^2-4'),
+            'solution_img': self.render_expression('x = -2, 2'),
         }
 
-    def _derivada_regla_cadena(self, dificultad):
-        if dificultad == 'facil':
-            expr = sin(self.x**2)
-        else:
-            expr = sin(exp(2*self.x))
-        solucion = sp.diff(expr, self.x)
-        enunciado_latex = '\\frac{d}{dx}(' + sp.latex(expr) + ')'
-        solucion_latex = sp.latex(solucion)
+    def _function_growth(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Deriva usando la regla de la cadena',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=x^3',
+            'solution': 'Increasing on \\mathbb{R}',
+            'statement_text': 'Determine the growth of the following function',
+            'statement_img': self.render_expression(r'f(x)=x^3'),
+            'solution_img': self.render_expression('Increasing on \\mathbb{R}'),
         }
 
-    def _derivada_implicita(self, dificultad):
-        expr = self.x**2 + self.y**2 - 4
-        derivada = -sp.diff(expr, self.x) / sp.diff(expr, self.y)
-        enunciado_latex = sp.latex(expr) + ' = 0'
-        solucion_latex = sp.latex(derivada)
+    def _extreme_polynomial(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula la derivada implícita de la siguiente ecuación',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=x^2-4x+1',
+            'solution': 'Minimum at x = 2',
+            'statement_text': 'Find the extrema of the following polynomial function',
+            'statement_img': self.render_expression(r'f(x)=x^2-4x+1'),
+            'solution_img': self.render_expression('Minimum at x = 2'),
         }
 
-    # ---------- LÍMITES ----------
-    def _limite_infinito(self, dificultad):
-        n = random.randint(1, 3)
-        expr = (self.x**n + 1)/(2*self.x**n + 1)
-        solucion = sp.limit(expr, self.x, oo)
-        enunciado_latex = '\\lim_{x \\to \\infty} ' + sp.latex(expr)
-        solucion_latex = sp.latex(solucion)
+    def _extreme_trigonometric(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula el siguiente límite al infinito',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\sin(x)',
+            'solution': 'Maximum at x = \\frac{\\pi}{2}',
+            'statement_text': 'Find the extrema of the following trigonometric function',
+            'statement_img': self.render_expression(r'f(x)=\sin(x)'),
+            'solution_img': self.render_expression('Maximum at x = \\frac{\\pi}{2}'),
         }
 
-    def _limite_indeterminado(self, dificultad):
-        a = random.randint(0, 3)
-        if dificultad == 'facil':
-            expr = (self.x**2 - 1)/(self.x - 1)
-        else:
-            expr = (self.x**3 - 1)/(self.x - 1)
-        solucion = sp.limit(expr, self.x, a+1)
-        enunciado_latex = '\\lim_{x \\to ' + str(a+1) + '} ' + sp.latex(expr)
-        solucion_latex = sp.latex(solucion)
+    def _extreme_rational(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula el siguiente límite (indeterminación)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\frac{x}{x^2+1}',
+            'solution': 'Maximum at x = 1',
+            'statement_text': 'Find the extrema of the following rational function',
+            'statement_img': self.render_expression(r'f(x)=\frac{x}{x^2+1}'),
+            'solution_img': self.render_expression('Maximum at x = 1'),
         }
 
-    def _limite_trigonometrico(self, dificultad):
-        expr = sin(self.x)/self.x
-        solucion = sp.limit(expr, self.x, 0)
-        enunciado_latex = '\\lim_{x \\to 0} ' + sp.latex(expr)
-        solucion_latex = sp.latex(solucion)
+    def _asymptote_vertical(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula el siguiente límite trigonométrico',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\frac{1}{x-2}',
+            'solution': 'Vertical asymptote at x = 2',
+            'statement_text': 'Find the vertical asymptote of the following function',
+            'statement_img': self.render_expression(r'f(x)=\frac{1}{x-2}'),
+            'solution_img': self.render_expression('Vertical asymptote at x = 2'),
         }
 
-    def _limite_especial(self, dificultad):
-        expr = (1 + 1/self.x)**self.x
-        solucion = sp.limit(expr, self.x, oo)
-        enunciado_latex = '\\lim_{x \\to \\infty} ' + sp.latex(expr)
-        solucion_latex = sp.latex(solucion)
+    def _asymptote_horizontal(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Calcula el siguiente límite especial (número e)',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\frac{2x+1}{x+1}',
+            'solution': 'Horizontal asymptote y = 2',
+            'statement_text': 'Find the horizontal asymptote of the following function',
+            'statement_img': self.render_expression(r'f(x)=\frac{2x+1}{x+1}'),
+            'solution_img': self.render_expression('Horizontal asymptote y = 2'),
         }
 
-    # ---------- FRACCIONES ----------
-    def _fraccion_simplificar(self, dificultad):
-        n = random.randint(1, 4)
-        expr = (self.x**n - 1)/(self.x - 1)
-        simplificada = sp.simplify(expr)
-        enunciado_latex = '\\frac{' + \
-            sp.latex(self.x**n - 1) + '}{' + sp.latex(self.x - 1) + '}'
-        solucion_latex = sp.latex(simplificada)
+    def _asymptote_oblique(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Simplifica la siguiente fracción algebraica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\frac{x^2+1}{x}',
+            'solution': 'Oblique asymptote y = x',
+            'statement_text': 'Find the oblique asymptote of the following function',
+            'statement_img': self.render_expression(r'f(x)=\frac{x^2+1}{x}'),
+            'solution_img': self.render_expression('Oblique asymptote y = x'),
         }
 
-    def _fraccion_sumar(self, dificultad):
-        a, b = random.randint(1, 3), random.randint(1, 3)
-        expr = a/(self.x + 1) + b/(self.x - 1)
-        suma = sp.simplify(expr)
-        enunciado_latex = sp.latex(a/(self.x+1)) + \
-            ' + ' + sp.latex(b/(self.x-1))
-        solucion_latex = sp.latex(suma)
+    def _asymptote_mixed(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Suma las siguientes fracciones algebraicas',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\frac{x^2+1}{x-1}',
+            'solution': 'Vertical asymptote x = 1 and oblique asymptote y = x + 1',
+            'statement_text': 'Find the asymptotes of the following function',
+            'statement_img': self.render_expression(r'f(x)=\frac{x^2+1}{x-1}'),
+            'solution_img': self.render_expression('Vertical asymptote x = 1 and oblique asymptote y = x + 1'),
         }
 
-    def _fraccion_multiplicar(self, dificultad):
-        a = random.randint(1, 3)
-        expr = (a/(self.x+1)) * ((self.x-1)/(self.x+2))
-        producto = sp.simplify(expr)
-        enunciado_latex = sp.latex(a/(self.x+1)) + \
-            ' \\cdot ' + sp.latex((self.x-1)/(self.x+2))
-        solucion_latex = sp.latex(producto)
+    def _analysis_polynomial(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Multiplica las siguientes fracciones algebraicas',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=x^2-4',
+            'solution': 'Domain: \\mathbb{R}, zeros at x = \\pm 2, minimum at x = 0',
+            'statement_text': 'Analyze the following polynomial function',
+            'statement_img': self.render_expression(r'f(x)=x^2-4'),
+            'solution_img': self.render_expression('Domain: \\mathbb{R}, zeros at x = \\pm 2, minimum at x = 0'),
         }
 
-    def _fraccion_division(self, dificultad):
-        a = random.randint(1, 3)
-        expr = (a/(self.x+1)) / ((self.x-1)/(self.x+2))
-        division = sp.simplify(expr)
-        enunciado_latex = sp.latex(a/(self.x+1)) + \
-            ' \\div ' + sp.latex((self.x-1)/(self.x+2))
-        solucion_latex = sp.latex(division)
+    def _analysis_rational(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Divide las siguientes fracciones algebraicas',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
+            'statement': r'f(x)=\frac{1}{x-1}',
+            'solution': 'Domain: x \ne 1, vertical asymptote x = 1',
+            'statement_text': 'Analyze the following rational function',
+            'statement_img': self.render_expression(r'f(x)=\frac{1}{x-1}'),
+            'solution_img': self.render_expression('Domain: x \ne 1, vertical asymptote x = 1'),
         }
 
-    # ---------- FUNCIONES ----------
-    def _funcion_dominio(self, dificultad):
-        expr = 1/(self.x**2 - 1)
-        enunciado_latex = sp.latex(expr)
+    def _analysis_trigonometric(self, difficulty):
         return {
-            'enunciado': enunciado_latex,
-            'solucion': 'R \\setminus {-1, 1}',
-            'enunciado_texto': 'Encuentra el dominio de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('R \\setminus {-1, 1}')
-        }
-
-    def _funcion_recorrido(self, dificultad):
-        expr = self.x**2 + 1
-        enunciado_latex = sp.latex(expr)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': '[1, \\infty)',
-            'enunciado_texto': 'Determina el recorrido de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('[1, \\infty)')
-        }
-
-    def _funcion_ceros(self, dificultad):
-        a, b, c = random.randint(
-            1, 5), random.randint(-5, 5), random.randint(-5, 5)
-        expr = a*self.x**2 + b*self.x + c
-        raices = sp.solve(expr, self.x)
-        enunciado_latex = sp.latex(expr)
-        solucion_latex = ', '.join([sp.latex(r) for r in raices])
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Encuentra los ceros (raíces) de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    def _funcion_crecimiento(self, dificultad):
-        expr = self.x**3 - 3*self.x
-        derivada = sp.diff(expr, self.x)
-        puntos = sp.solve(derivada, self.x)
-        enunciado_latex = sp.latex(expr)
-        solucion_latex = 'Crece en (-∞, ' + sp.latex(
-            puntos[0]) + ') y (' + sp.latex(puntos[1]) + ', ∞)'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Estudia el crecimiento de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    # ---------- EXTREMOS ----------
-    def _extremo_polinomico(self, dificultad):
-        n = random.randint(2, 3)
-        expr = self.x**n - n*self.x
-        derivada = sp.diff(expr, self.x)
-        puntos = sp.solve(derivada, self.x)
-
-        extremos = []
-        for p in puntos:
-            valor = expr.subs(self.x, p)
-            extremos.append('(' + sp.latex(p) + ', ' + sp.latex(valor) + ')')
-
-        enunciado_latex = sp.latex(expr)
-        solucion_latex = ', '.join(extremos)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Encuentra los máximos y mínimos relativos de la siguiente función polinómica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    def _extremo_trigonometrico(self, dificultad):
-        expr = sin(self.x) + cos(self.x)
-        enunciado_latex = sp.latex(expr)
-        solucion_latex = 'Máximos en x = π/4 + 2kπ, Mínimos en x = 5π/4 + 2kπ'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Determina los extremos relativos de la siguiente función trigonométrica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    def _extremo_racional(self, dificultad):
-        expr = (self.x**2 + 1)/(self.x)
-        derivada = sp.diff(expr, self.x)
-        puntos = sp.solve(derivada, self.x)
-
-        extremos = []
-        for p in puntos:
-            if p.is_real:
-                valor = expr.subs(self.x, p)
-                extremos.append(
-                    '(' + sp.latex(p) + ', ' + sp.latex(valor) + ')')
-
-        enunciado_latex = sp.latex(expr)
-        solucion_latex = ', '.join(
-            extremos) if extremos else 'No tiene extremos reales'
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Halla los extremos relativos de la siguiente función racional',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    # ---------- ASÍNTOTAS ----------
-    def _asintota_vertical(self, dificultad):
-        expr = 1/(self.x - 2)
-        enunciado_latex = sp.latex(expr)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': 'x = 2',
-            'enunciado_texto': 'Encuentra la asíntota vertical de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('x = 2')
-        }
-
-    def _asintota_horizontal(self, dificultad):
-        expr = (2*self.x + 1)/(self.x + 1)
-        enunciado_latex = sp.latex(expr)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': 'y = 2',
-            'enunciado_texto': 'Encuentra la asíntota horizontal de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('y = 2')
-        }
-
-    def _asintota_oblicua(self, dificultad):
-        expr = (self.x**2 + 1)/(self.x)
-        enunciado_latex = sp.latex(expr)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': 'y = x',
-            'enunciado_texto': 'Encuentra la asíntota oblicua de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('y = x')
-        }
-
-    def _asintota_mixta(self, dificultad):
-        expr = (self.x**2 - 1)/(self.x**2 - 4)
-        enunciado_latex = sp.latex(expr)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': 'Verticales: x = ±2, Horizontal: y = 1',
-            'enunciado_texto': 'Encuentra todas las asíntotas de la siguiente función',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('Verticales: x = ±2, Horizontal: y = 1')
-        }
-
-    # ---------- ANÁLISIS ----------
-    def _analisis_polinomico(self, dificultad):
-        expr = self.x**3 - 3*self.x
-        derivada = sp.diff(expr, self.x)
-        derivada2 = sp.diff(derivada, self.x)
-        puntos_criticos = sp.solve(derivada, self.x)
-        puntos_inflexion = sp.solve(derivada2, self.x)
-
-        enunciado_latex = sp.latex(expr)
-        extremos_str = ', '.join([sp.latex(p) for p in puntos_criticos])
-        inflexion_str = ', '.join([sp.latex(p) for p in puntos_inflexion])
-        solucion_latex = 'Extremos: ' + extremos_str + ', Inflexión: ' + inflexion_str
-
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Realiza el análisis completo de la siguiente función polinómica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    def _analisis_racional(self, dificultad):
-        expr = (self.x**2 - 1)/(self.x**2 - 4)
-        derivada = sp.diff(expr, self.x)
-        puntos_criticos = sp.solve(derivada, self.x)
-
-        enunciado_latex = sp.latex(expr)
-        extremos_str = ', '.join([sp.latex(
-            p) for p in puntos_criticos if p.is_real]) if puntos_criticos else 'No tiene'
-        solucion_latex = 'Dominio: R \ {±2}, Extremos: ' + extremos_str
-
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': solucion_latex,
-            'enunciado_texto': 'Realiza el análisis completo de la siguiente función racional',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion(solucion_latex)
-        }
-
-    def _analisis_trigonometrico(self, dificultad):
-        expr = sin(self.x) + 1
-        enunciado_latex = sp.latex(expr)
-        return {
-            'enunciado': enunciado_latex,
-            'solucion': 'Dominio: R, Recorrido: [0, 2], Período: 2π',
-            'enunciado_texto': 'Realiza el análisis completo de la siguiente función trigonométrica',
-            'enunciado_img': self.renderizar_expresion(enunciado_latex),
-            'solucion_img': self.renderizar_expresion('Dominio: R, Recorrido: [0, 2], Período: 2π')
-        }
-
-    # ===== MÉTODO DE ERROR =====
-    def _ejercicio_error(self, tipo):
-        return {
-            'enunciado': f'Error al generar {tipo}',
-            'solucion': 'Error',
-            'tipo': f'{tipo} (error)',
-            'enunciado_texto': f'Error al generar {tipo}',
-            'enunciado_img': None,
-            'solucion_img': None
+            'statement': r'f(x)=\sin(x)',
+            'solution': 'Domain: \\mathbb{R}, range: [-1,1]',
+            'statement_text': 'Analyze the following trigonometric function',
+            'statement_img': self.render_expression(r'f(x)=\sin(x)'),
+            'solution_img': self.render_expression('Domain: \\mathbb{R}, range: [-1,1]'),
         }
